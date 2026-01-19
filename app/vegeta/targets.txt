@@ -1,0 +1,45 @@
+POST http://localhost:3000/queue/add
+Content-Type: application/json
+type: image
+@body/body_1.json
+
+POST http://localhost:3000/queue/add
+Content-Type: application/json
+type: image
+@body/body_2.json
+
+POST http://localhost:3000/queue/add
+Content-Type: application/json
+type: image
+@body/body_3.json
+
+POST http://localhost:3000/queue/add
+Content-Type: application/json
+type: image
+@body/body_6.json
+
+POST http://localhost:3000/queue/add
+Content-Type: application/json
+type: image
+@body/body_6.json
+
+POST http://localhost:3000/queue/add
+Content-Type: application/json
+type: image
+@body/body_4.json
+
+POST http://localhost:3000/queue/add
+Content-Type: application/json
+type: image
+@body/body_5.json
+
+POST http://localhost:3000/queue/add
+Content-Type: application/json
+type: image
+@body/body_6.json
+
+POST http://localhost:3000/queue/add
+Content-Type: application/json
+type: image
+@body/body_2.json
+

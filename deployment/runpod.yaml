@@ -1,0 +1,15 @@
+queues:
+  inference:
+    deployment:
+      git_url: "https://github.com/org/simple_task.git"
+      branch: "main"
+      code_path: "tasks/dummy-task"
+      startup_cmd: "python main.py"
+      mode: "long_running"
+      env_vars: {}
+      startup_timeout_secs: 60
+    sub_queues:
+      - name: high
+        priority: 7
+      - name: low
+        priority: 3

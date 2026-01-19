@@ -1,0 +1,18 @@
+{
+    "user_id": 3,
+    "predict_id":3,
+    "status": "pending",
+    "priority": 0,
+    "model_input":{
+        "prompt": "A futuristic cityscape at sunset",
+        "negative_prompt": "monochrome,greyscale, artist name, signature, watermark",
+        "width": 1024,
+        "height": 1024,
+        "steps": 28,
+        "clip_skip": 0,
+        "guidance_scale": 5,
+        "batch_nbr": 1,
+        "model_name": "anime-v1"
+    },
+    "webhook_url": "http://example.com/webhook"
+}

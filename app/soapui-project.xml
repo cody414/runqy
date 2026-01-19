@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<con:soapui-project id="runqy" activeEnvironment="Default" name="runqy-api" resourceRoot="" soapui-version="5.9.1" abortOnError="false" runType="SEQUENTIAL" xmlns:con="http://eviware.com/soapui/config">
+  <con:settings/>
+  <con:interface xsi:type="con:RestService" id="runqy-rest" wadlVersion="http://wadl.dev.java.net/2009/02" name="runqy-api" type="rest" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <con:settings/>
+    <con:definitionCache/>
+    <con:endpoints>
+      <con:endpoint>http://localhost:3000</con:endpoint>
+    </con:endpoints>
+
+    <!-- GET /queue/{uuid}/{priority} - Get Task Status -->
+    <con:resource name="GetTaskStatus" path="/queue/{uuid}/{priority}" id="2ec4b05e-204d-4a67-8880-050c40fb69d4">
+      <con:settings/>
+      <con:parameters>
+        <con:parameter>
+          <con:name>uuid</con:name>
+          <con:value>example-uuid-123</con:value>
+          <con:style>TEMPLATE</con:style>
+          <con:default>example-uuid-123</con:default>
+          <con:description>Task UUID returned from POST /queue/add</con:description>
+        </con:parameter>
+        <con:parameter>
+          <con:name>priority</con:name>
+          <con:value>normal</con:value>
+          <con:style>TEMPLATE</con:style>
+          <con:default>normal</con:default>
+          <con:description>Queue priority: "normal" or "priority"</con:description>
+        </con:parameter>
+      </con:parameters>
+      <con:method name="GET" id="get-task-status" method="GET">
+        <con:settings/>
+        <con:parameters/>
+        <con:representation type="RESPONSE">
+          <con:mediaType>application/json</con:mediaType>
+          <con:status>200</con:status>
+          <con:params/>
+          <con:description>Task status and result</con:description>
+          <con:sampleContent>{
+  "info": {
+    "id": "task-uuid",
+    "type": "predict",
+    "payload": "{}",
+    "state": "completed",
+    "queue": "normal",
+    "max_retry": 3,
+    "retried": 0,
+    "result": "{}"
+  }
+}</con:sampleContent>
+        </con:representation>
+        <con:representation type="FAULT">
+          <con:mediaType>application/json</con:mediaType>
+          <con:status>400</con:status>
+          <con:params/>
+          <con:description>Error response</con:description>
+          <con:sampleContent>{
+  "errors": ["task not found"]
+}</con:sampleContent>
+        </con:representation>
+        <con:representation type="FAULT"><con:mediaType>application/json; charset=utf-8</con:mediaType><con:status>400</con:status><con:params/><con:element xmlns:nor="http://localhost/queue/your-task-uuid-here/normal">nor:Fault</con:element></con:representation><con:request name="Get Task Status - Normal Queue" id="get-task-normal" mediaType="application/json">
+          <con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings>
+          <con:endpoint>http://localhost:3000</con:endpoint>
+          <con:request/><con:originalUri>http://localhost/queue/your-task-uuid-here/normal</con:originalUri><con:credentials><con:authType>No Authorization</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:parameters>
+            <con:entry key="uuid" value="your-task-uuid-here"/>
+            <con:entry key="priority" value="normal"/>
+          </con:parameters>
+        </con:request>
+        <con:request name="Get Task Status - Priority Queue" id="get-task-priority" mediaType="application/json">
+          <con:settings/>
+          <con:endpoint>http://localhost:3000</con:endpoint>
+          <con:parameters>
+            <con:entry key="uuid" value="your-task-uuid-here"/>
+            <con:entry key="priority" value="priority"/>
+          </con:parameters>
+        </con:request>
+      </con:method>
+    </con:resource>
+
+    <!-- POST /queue/add - Add New Task -->
+    <con:resource name="AddTask" path="/queue/add" id="b09a600f-e7f8-4b3b-8b6a-2fb38b9341cb">
+      <con:settings/>
+      <con:parameters/>
+      <con:method name="POST" id="add-task" method="POST">
+        <con:settings/>
+        <con:parameters/>
+        <con:representation type="REQUEST">
+          <con:mediaType>application/json</con:mediaType>
+          <con:params/>
+          <con:description>Prediction request body</con:description>
+          <con:sampleContent>{
+  "user_id": 1,
+  "predict_id": 1,
+  "queue": "normal",
+  "timeout": 300,
+  "provider": "worker",
+  "webhook_url": "https://example.com/webhook",
+  "model_input": {
+    "prompt": "A futuristic cityscape at sunset",
+    "width": 1024,
+    "height": 1024,
+    "num_steps": 20,
+    "guidance_scale": 7.5,
+    "batch_nbr": 1,
+    "model_name": "illustrious-hassuka-xl"
+  }
+}</con:sampleContent>
+        </con:representation>
+        <con:representation type="RESPONSE">
+          <con:mediaType>application/json</con:mediaType>
+          <con:status>200</con:status>
+          <con:params/>
+          <con:description>Task enqueued successfully</con:description>
+          <con:sampleContent>{
+  "info": {
+    "id": "generated-task-uuid",
+    "type": "predict",
+    "state": "pending",
+    "queue": "normal"
+  },
+  "user_predict": {}
+}</con:sampleContent>
+        </con:representation>
+        <con:representation type="FAULT">
+          <con:mediaType>application/json</con:mediaType>
+          <con:status>401</con:status>
+          <con:params/>
+          <con:description>Unauthorized</con:description>
+          <con:sampleContent>{
+  "errors": ["access unauthorized"]
+}</con:sampleContent>
+        </con:representation>
+
+        <!-- Worker/SDXL Request -->
+        <con:representation type="FAULT"><con:mediaType>application/json; charset=utf-8</con:mediaType><con:status>401</con:status><con:params/><con:element xmlns:add="http://localhost/queue/add">add:Fault</con:element></con:representation><con:representation type="RESPONSE"><con:mediaType>application/json; charset=utf-8</con:mediaType><con:status>200</con:status><con:params/><con:element xmlns:add="http://localhost/queue/add">add:Response</con:element></con:representation><con:request name="Add Task - Worker/SDXL" id="add-task-worker" mediaType="application/json" postQueryString="false">
+          <con:settings>
+            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config">
+  &lt;con:entry key="type" value="image"/>
+  &lt;con:entry key="Authorization" value="Bearer your-api-key"/>
+&lt;/xml-fragment></con:setting>
+          </con:settings>
+          <con:endpoint>http://localhost:3000</con:endpoint>
+          <con:request>{
+  "user_id": 1,
+  "predict_id": 1,
+  "queue": "normal",
+  "timeout": 300,
+  "provider": "worker",
+  "webhook_url": "https://example.com/webhook",
+  "model_input": {
+    "prompt": "A futuristic cityscape at sunset",
+    "negative_prompt": "monochrome, greyscale, watermark",
+    "width": 1024,
+    "height": 1024,
+    "num_steps": 20,
+    "clip_skip": 2,
+    "guidance_scale": 7.5,
+    "batch_nbr": 1,
+    "model_name": "illustrious-hassuka-xl"
+  }
+}</con:request>
+          <con:credentials>
+            <con:authType>No Authorization</con:authType>
+          </con:credentials>
+          <con:jmsConfig JMSDeliveryMode="PERSISTENT"/>
+          <con:jmsPropertyConfig/><con:parameters/>
+        </con:request>
+
+        <!-- Azure GPT-Image-1 Request -->
+        <con:request name="Add Task - Azure gpt-image-1" id="add-task-azure-gpt" mediaType="application/json" postQueryString="false">
+          <con:settings>
+            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config">
+  &lt;con:entry key="type" value="image"/>
+  &lt;con:entry key="Authorization" value="Bearer your-api-key"/>
+&lt;/xml-fragment></con:setting>
+          </con:settings>
+          <con:endpoint>http://localhost:3000</con:endpoint>
+          <con:request>{
+  "user_id": 1,
+  "predict_id": 1,
+  "queue": "normal",
+  "timeout": 120,
+  "provider": "azure",
+  "webhook_url": "https://example.com/webhook",
+  "model_input": {
+    "model_name": "gpt-image-1",
+    "prompt": "A mountain landscape at golden hour",
+    "width": 1024,
+    "height": 1024,
+    "quality": "medium",
+    "output_format": "png",
+    "output_compression": 100,
+    "batch_nbr": 1
+  }
+}</con:request>
+          <con:originalUri>http://localhost/queue/add</con:originalUri><con:credentials>
+            <con:authType>No Authorization</con:authType>
+          </con:credentials>
+          <con:jmsConfig JMSDeliveryMode="PERSISTENT"/>
+          <con:jmsPropertyConfig/><con:parameters/>
+        </con:request>
+
+        <!-- Azure Flux.2-pro Request -->
+        <con:request name="Add Task - Azure flux.2-pro" id="add-task-azure-flux" mediaType="application/json" postQueryString="false">
+          <con:settings>
+            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config">
+  &lt;con:entry key="type" value="image"/>
+  &lt;con:entry key="Authorization" value="Bearer your-api-key"/>
+&lt;/xml-fragment></con:setting>
+          </con:settings>
+          <con:endpoint>http://localhost:3000</con:endpoint>
+          <con:request>{
+  "user_id": 1,
+  "predict_id": 1,
+  "queue": "normal",
+  "timeout": 120,
+  "provider": "azure",
+  "webhook_url": "https://example.com/webhook",
+  "model_input": {
+    "model_name": "flux.2-pro",
+    "prompt": "A serene mountain lake reflection",
+    "width": 1024,
+    "height": 1024,
+    "batch_nbr": 1
+  }
+}</con:request>
+          <con:originalUri>http://localhost/queue/add</con:originalUri><con:credentials>
+            <con:authType>No Authorization</con:authType>
+          </con:credentials>
+          <con:jmsConfig JMSDeliveryMode="PERSISTENT"/>
+          <con:jmsPropertyConfig/><con:parameters/>
+        </con:request>
+
+        <!-- Google Gemini Flash Request -->
+        <con:request name="Add Task - Google gemini-2.5-flash-image" id="add-task-google-flash" mediaType="application/json" postQueryString="false">
+          <con:settings>
+            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config">&#13;
+  &lt;con:entry key="Authorization" value="Bearer asynq-zeo2FTasICXfWys7kLEp01DXNu1QmEZT"/>&#13;
+  &lt;con:entry key="type" value="image"/>&#13;
+&lt;/xml-fragment></con:setting>
+          </con:settings>
+          <con:endpoint>http://localhost:3000</con:endpoint>
+          <con:request>{
+  "user_id": 1,
+  "predict_id": 1,
+  "timeout": 120,
+  "provider": "google",
+  "webhook_url": "https://example.com/webhook",
+  "model_input": {
+    "model_name": "gemini-2.5-flash-image",
+    "prompt": "A futuristic cityscape at sunset with flying cars",
+    "aspect_ratio": "16:9"
+  }
+}</con:request>
+          <con:originalUri>http://localhost/queue/add</con:originalUri><con:credentials>
+            <con:authType>No Authorization</con:authType>
+          </con:credentials>
+          <con:jmsConfig JMSDeliveryMode="PERSISTENT"/>
+          <con:jmsPropertyConfig/><con:parameters/>
+        </con:request>
+
+        <!-- Google Gemini Pro Request (with imageSize) -->
+        <con:request name="Add Task - Google gemini-3-pro-image-preview" id="add-task-google-pro" mediaType="application/json" postQueryString="false">
+          <con:settings>
+            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config">
+  &lt;con:entry key="type" value="image"/>
+  &lt;con:entry key="Authorization" value="Bearer your-api-key"/>
+&lt;/xml-fragment></con:setting>
+          </con:settings>
+          <con:endpoint>http://localhost:3000</con:endpoint>
+          <con:request>{
+  "user_id": 1,
+  "predict_id": 1,
+  "timeout": 120,
+  "provider": "google",
+  "webhook_url": "https://example.com/webhook",
+  "model_input": {
+    "model_name": "gemini-3-pro-image-preview",
+    "prompt": "A majestic blue whale swimming in crystal clear ocean waters",
+    "aspect_ratio": "16:9",
+    "image_size": "4K"
+  }
+}</con:request>
+          <con:originalUri>http://localhost/queue/add</con:originalUri><con:credentials>
+            <con:authType>No Authorization</con:authType>
+          </con:credentials>
+          <con:jmsConfig JMSDeliveryMode="PERSISTENT"/>
+          <con:jmsPropertyConfig/><con:parameters/>
+        </con:request>
+
+        <!-- Google Veo Video Request (Standard) -->
+        <con:request name="Add Task - Google veo-3.1-generate-preview" id="add-task-google-veo" mediaType="application/json" postQueryString="false">
+          <con:settings>
+            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config">
+  &lt;con:entry key="type" value="video"/>
+  &lt;con:entry key="Authorization" value="Bearer your-api-key"/>
+&lt;/xml-fragment></con:setting>
+          </con:settings>
+          <con:endpoint>http://localhost:3000</con:endpoint>
+          <con:request>{
+  "user_id": 1,
+  "predict_id": 1,
+  "timeout": 300,
+  "provider": "google",
+  "webhook_url": "https://example.com/webhook",
+  "model_input": {
+    "model_name": "veo-3.1-generate-preview",
+    "prompt": "A cinematic shot of a majestic lion walking through the savannah at golden hour",
+    "aspect_ratio": "16:9",
+    "resolution": "1080p",
+    "duration_seconds": 8,
+    "negative_prompt": "cartoon, drawing, low quality, blurry",
+    "person_generation": "allow_all"
+  }
+}</con:request>
+          <con:originalUri>http://localhost/queue/add</con:originalUri><con:credentials>
+            <con:authType>No Authorization</con:authType>
+          </con:credentials>
+          <con:jmsConfig JMSDeliveryMode="PERSISTENT"/>
+          <con:jmsPropertyConfig/><con:parameters/>
+        </con:request>
+
+        <!-- Google Veo Video Request (Fast) -->
+        <con:request name="Add Task - Google veo-3.1-fast-generate-preview" id="add-task-google-veo-fast" mediaType="application/json" postQueryString="false">
+          <con:settings>
+            <con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment xmlns:con="http://eviware.com/soapui/config">&#13;
+  &lt;con:entry key="Authorization" value="Bearer asynq-zeo2FTasICXfWys7kLEp01DXNu1QmEZT"/>&#13;
+  &lt;con:entry key="type" value="video"/>&#13;
+&lt;/xml-fragment></con:setting>
+          </con:settings>
+          <con:endpoint>http://localhost:3000</con:endpoint>
+          <con:request>{
+  "user_id": 1,
+  "predict_id": 1,
+  "timeout": 180,
+  "provider": "google",
+  "webhook_url": "https://example.com/webhook",
+  "model_input": {
+    "model_name": "veo-3.1-fast-generate-preview",
+    "prompt": "a dinosaur hunting a cow in a field with montains in background",
+    "aspect_ratio": "16:9",
+    "resolution": "720p",
+    "duration_seconds": 4
+  }
+}</con:request>
+          <con:originalUri>http://localhost/queue/add</con:originalUri><con:credentials>
+            <con:authType>No Authorization</con:authType>
+          </con:credentials>
+          <con:jmsConfig JMSDeliveryMode="PERSISTENT"/>
+          <con:jmsPropertyConfig/><con:parameters/>
+        </con:request>
+
+      </con:method>
+    </con:resource>
+
+  </con:interface>
+
+  <con:properties/>
+  <con:wssContainer/>
+  <con:oAuth2ProfileContainer/>
+  <con:oAuth1ProfileContainer/>
+  <con:sensitiveInformation/>
+</con:soapui-project>

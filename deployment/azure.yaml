@@ -1,0 +1,4 @@
+queues:
+  azure:
+    priority: 8
+    provider: "azure"
