@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/Publikey/runqy/config"
@@ -62,6 +64,25 @@ type WorkerConfigResponse struct {
 // HandshakeErrorResponse is returned on handshake errors
 type HandshakeErrorResponse struct {
 	Error string `json:"error"`
+}
+
+// resolveEnvVars resolves environment variable references in env_vars map.
+// Values prefixed with "env://" are replaced with the actual environment variable value.
+// For example, "env://SECRET_KEY" becomes the value of os.Getenv("SECRET_KEY").
+func resolveEnvVars(envVars map[string]string) map[string]string {
+	if envVars == nil {
+		return nil
+	}
+
+	resolved := make(map[string]string, len(envVars))
+	for key, value := range envVars {
+		if envName, found := strings.CutPrefix(value, "env://"); found {
+			resolved[key] = os.Getenv(envName)
+		} else {
+			resolved[key] = value
+		}
+	}
+	return resolved
 }
 
 // QueuesListResponse is the response for listing all queues
@@ -156,7 +177,7 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 			}}
 		}
 
-		// Build deployment config
+		// Build deployment config with resolved environment variables
 		var deployment WorkerDeploymentConfig
 		if queueCfg.Deployment != nil {
 			deployment = WorkerDeploymentConfig{
@@ -165,7 +186,7 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 				CodePath:           queueCfg.Deployment.CodePath,
 				StartupCmd:         queueCfg.Deployment.StartupCmd,
 				Mode:               queueCfg.Deployment.Mode,
-				EnvVars:            queueCfg.Deployment.EnvVars,
+				EnvVars:            resolveEnvVars(queueCfg.Deployment.EnvVars),
 				StartupTimeoutSecs: queueCfg.Deployment.StartupTimeoutSecs,
 			}
 		}
