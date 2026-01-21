@@ -90,6 +90,11 @@ func main() {
 	defer pgDB.Close()
 	log.Println("[INFO] PostgreSQL connection established")
 
+	// Ensure database schema exists (creates tables if missing)
+	if err := models.EnsureSchema(pgDB); err != nil {
+		log.Fatalf("[FATAL] Failed to initialize database schema: %v", err)
+	}
+
 	redisClient := asynq.NewClient(redisAddr.AsynqOpt)
 	defer redisClient.Close()
 
