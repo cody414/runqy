@@ -33,5 +33,7 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 	// Admin-only endpoints - require global ASYNQ_API_KEY
 	router_workers.Use(Authorize())
 	router_workers.GET("/queues", ListQueueConfigs(qwStore))
+	router_workers.POST("/queues", CreateQueueConfig(qwStore))
+	router_workers.DELETE("/queues/:queue_name", DeleteQueueConfig(qwStore))
 	router_workers.POST("/reload", ReloadQueueConfigs(qwStore, qwConfigDir))
 }

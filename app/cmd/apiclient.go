@@ -307,10 +307,13 @@ type QueueConfigAPI struct {
 
 // DeploymentConfigAPI represents deployment configuration
 type DeploymentConfigAPI struct {
-	GitURL     string `json:"git_url"`
-	Branch     string `json:"branch"`
-	StartupCmd string `json:"startup_cmd"`
-	Mode       string `json:"mode,omitempty"`
+	GitURL             string            `json:"git_url"`
+	Branch             string            `json:"branch"`
+	CodePath           string            `json:"code_path,omitempty"`
+	StartupCmd         string            `json:"startup_cmd"`
+	Mode               string            `json:"mode,omitempty"`
+	EnvVars            map[string]string `json:"env_vars,omitempty"`
+	StartupTimeoutSecs int               `json:"startup_timeout_secs,omitempty"`
 }
 
 // ConfigListResponse is the response for listing configs
@@ -361,4 +364,44 @@ func (c *APIClient) ReloadConfigs() (*ReloadResponse, error) {
 	}
 
 	return &resp, nil
+}
+
+// CreateQueueRequest is the request body for creating a queue
+type CreateQueueRequest struct {
+	Name       string               `json:"name"`
+	Priority   int                  `json:"priority"`
+	Provider   string               `json:"provider,omitempty"`
+	Deployment *DeploymentConfigAPI `json:"deployment,omitempty"`
+}
+
+// CreateQueueResponse is the response for queue creation
+type CreateQueueResponse struct {
+	Queue   *QueueConfigAPI `json:"queue"`
+	Message string          `json:"message"`
+}
+
+// CreateQueue creates a new queue configuration
+func (c *APIClient) CreateQueue(req *CreateQueueRequest, force bool) (*CreateQueueResponse, error) {
+	path := "/workers/queues"
+	if force {
+		path = "/workers/queues?force=true"
+	}
+
+	data, err := c.POST(path, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp CreateQueueResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &resp, nil
+}
+
+// DeleteQueue deletes a queue configuration
+func (c *APIClient) DeleteQueue(queueName string) error {
+	_, err := c.DELETE("/workers/queues/" + queueName)
+	return err
 }
