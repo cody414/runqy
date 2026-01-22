@@ -4,9 +4,13 @@ import (
 	"github.com/Publikey/runqy/config"
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/gin-gonic/gin"
+	"github.com/hibiken/asynq"
 )
 
-func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg *config.Config) {
+func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg *config.Config, redisOpt asynq.RedisClientOpt) {
+	// Setup CLI API endpoints (queue/task management)
+	inspector := asynq.NewInspector(redisOpt)
+	SetupCLIAPI(r, inspector)
 	// api GET queue
 	router_predict := r.Group("queue")
 	router_predict.GET("/:uuid/:priority", GetPredictStatus)

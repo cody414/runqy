@@ -10,6 +10,9 @@ type Config struct {
 	// Server
 	HTTPPort string
 
+	// API Authentication
+	APIKey string
+
 	// Redis (existing env vars, centralized here)
 	RedisHost     string
 	RedisPort     string
@@ -57,6 +60,9 @@ func Load() *Config {
 	return &Config{
 		// Server
 		HTTPPort: getEnv("PORT", "3000"),
+
+		// API Authentication
+		APIKey: os.Getenv("ASYNQ_API_KEY"),
 
 		// Redis
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),
