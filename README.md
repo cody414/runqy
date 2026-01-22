@@ -40,19 +40,43 @@ docker run -d --name redis -p 6379:6379 redis:alpine
 ```
 
 **Step 3: Start the server**
+
+Linux/Mac:
 ```bash
 cd runqy/app
 export REDIS_HOST=localhost
+export REDIS_PORT=6379
 export REDIS_PASSWORD=""
 export RUNQY_API_KEY=dev-api-key
 go run . serve --sqlite
 ```
 
+Windows (PowerShell):
+```powershell
+cd runqy/app
+$env:REDIS_HOST = "localhost"
+$env:REDIS_PORT = "6379"
+$env:REDIS_PASSWORD = ""
+$env:RUNQY_API_KEY = "dev-api-key"
+go run . serve --sqlite
+```
+
 **Step 4: Deploy the example queues** (in another terminal)
+
+Linux/Mac:
 ```bash
 cd runqy/app
 go build -o runqy .
-./runqy config create ../examples/quickstart.yaml
+./runqy login -s http://localhost:3000 -k dev-api-key
+./runqy config create -f ../examples/quickstart.yaml
+```
+
+Windows (PowerShell):
+```powershell
+cd runqy/app
+go build -o runqy.exe .
+.\runqy.exe login -s http://localhost:3000 -k dev-api-key
+.\runqy.exe config create -f ..\examples\quickstart.yaml
 ```
 
 This deploys two example queues:
@@ -66,9 +90,14 @@ cp config.yml.example config.yml
 go run ./cmd/worker
 ```
 
-The example config is pre-configured for the quickstart:
-- `api_key: "dev-api-key"` - same as server's `RUNQY_API_KEY`
-- `queue: "quickstart-oneshot"` - matches the deployed queue
+The example config is pre-configured for the quickstart with both queues:
+
+```yaml
+worker:
+  queues:
+    - "quickstart-oneshot:default"
+    - "quickstart-longrunning:default"
+```
 
 The worker registers with the server, clones the example task code, and starts processing.
 
@@ -92,7 +121,7 @@ Response:
 
 Use the `id` from the response in the next step.
 
-To try long-running mode, start another worker with `queue: "quickstart-longrunning"` in its config, then enqueue to `quickstart-longrunning:default`.
+To try long-running mode, just enqueue to `quickstart-longrunning:default` — the worker already listens on both queues.
 
 **Step 7: Check the result**
 ```bash
