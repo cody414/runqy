@@ -30,7 +30,7 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 	// Public queue config endpoint
 	router_workers.GET("/config/:queue_name", GetQueueConfig(qwStore))
 
-	// Admin-only endpoints - require global ASYNQ_API_KEY
+	// Admin-only endpoints - require global RUNQY_API_KEY
 	router_workers.Use(Authorize())
 	router_workers.GET("/queues", ListQueueConfigs(qwStore))
 	router_workers.POST("/queues", CreateQueueConfig(qwStore))

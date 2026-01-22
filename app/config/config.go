@@ -66,7 +66,7 @@ func Load() *Config {
 		HTTPPort: getEnv("PORT", "3000"),
 
 		// API Authentication
-		APIKey: os.Getenv("ASYNQ_API_KEY"),
+		APIKey: os.Getenv("RUNQY_API_KEY"),
 
 		// Redis
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),

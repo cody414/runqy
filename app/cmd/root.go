@@ -60,7 +60,7 @@ func init() {
 
 	// Remote server mode flags
 	rootCmd.PersistentFlags().StringVarP(&serverURL, "server", "s", "", "Remote server URL (e.g., https://runqy.example.com:3000)")
-	rootCmd.PersistentFlags().StringVarP(&apiKey, "api-key", "k", "", "API key for authentication (or set ASYNQ_API_KEY env var)")
+	rootCmd.PersistentFlags().StringVarP(&apiKey, "api-key", "k", "", "API key for authentication (or set RUNQY_API_KEY env var)")
 }
 
 // IsRemoteMode returns true if CLI should use remote server API
@@ -103,7 +103,7 @@ func initConfig() {
 			if creds, err := GetCurrentCredentials(); err == nil && creds != nil {
 				serverURL = creds.URL
 				// Only use saved API key if not already set via flag or env
-				if apiKey == "" && os.Getenv("ASYNQ_API_KEY") == "" {
+				if apiKey == "" && os.Getenv("RUNQY_API_KEY") == "" {
 					apiKey = creds.APIKey
 				}
 			}

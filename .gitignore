@@ -16,6 +16,9 @@ go.work
 go.work.sum
 vendor/
 
+# SQLite
+*.db
+
 # Python
 __pycache__/
 *.py[cod]

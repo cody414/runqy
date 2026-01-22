@@ -117,7 +117,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	apiKeyToSave := loginAPIKey
 	if apiKeyToSave == "" {
 		// Check environment variable
-		apiKeyToSave = os.Getenv("ASYNQ_API_KEY")
+		apiKeyToSave = os.Getenv("RUNQY_API_KEY")
 		if apiKeyToSave == "" {
 			// Prompt user
 			fmt.Print("API Key: ")

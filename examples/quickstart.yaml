@@ -1,0 +1,57 @@
+queues:
+  # One-shot mode: spawns a new Python process for each task
+  quickstart-oneshot:
+    priority: 5
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/quickstart-oneshot"
+      startup_cmd: "python main.py"
+      mode: "one_shot"
+      env_vars: {}
+      startup_timeout_secs: 30
+    input:
+      - name: "operation"
+        type:
+          - "string"
+      - name: "data"
+        type:
+          - "string"
+          - "int"
+          - "float"
+    output:
+      - name: "result"
+        type:
+          - "string"
+          - "int"
+          - "float"
+
+  # Long-running mode: keeps Python process alive between tasks
+  quickstart-longrunning:
+    priority: 5
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/quickstart-longrunning"
+      startup_cmd: "python main.py"
+      mode: "long_running"
+      env_vars: {}
+      startup_timeout_secs: 30
+    input:
+      - name: "operation"
+        type:
+          - "string"
+      - name: "data"
+        type:
+          - "string"
+          - "int"
+          - "float"
+    output:
+      - name: "result"
+        type:
+          - "string"
+          - "int"
+          - "float"
+      - name: "calls"
+        type:
+          - "int"

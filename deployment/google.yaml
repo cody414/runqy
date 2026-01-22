@@ -1,4 +1,0 @@
-queues:
-  google:
-    priority: 5
-    provider: "google"

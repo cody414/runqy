@@ -22,7 +22,7 @@ func Authorize() gin.HandlerFunc {
 			}
 
 			providedKey := strings.TrimPrefix(authHeader, "Bearer ")
-			expectedKey := os.Getenv("ASYNQ_API_KEY")
+			expectedKey := os.Getenv("RUNQY_API_KEY")
 
 			providedHash := sha256.Sum256([]byte(providedKey))
 			expectedHash := sha256.Sum256([]byte(expectedKey))

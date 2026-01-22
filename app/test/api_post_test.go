@@ -11,7 +11,7 @@ import (
 
 func TestPost(t *testing.T) {
 
-	apiKey := os.Getenv("ASYNQ_API_KEY")
+	apiKey := os.Getenv("RUNQY_API_KEY")
 
 	url := "http://localhost:3000/queue/add"
 
