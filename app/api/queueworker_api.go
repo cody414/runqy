@@ -98,6 +98,20 @@ type ReloadResponse struct {
 	Timestamp int64    `json:"timestamp"`
 }
 
+// CreateQueueRequest is the request body for creating a queue
+type CreateQueueRequest struct {
+	Name       string                      `json:"name" binding:"required"`
+	Priority   int                         `json:"priority" binding:"required,min=1"`
+	Provider   string                      `json:"provider,omitempty"`
+	Deployment *queueworker.DeploymentConfig `json:"deployment,omitempty"`
+}
+
+// CreateQueueResponse is the response for queue creation
+type CreateQueueResponse struct {
+	Queue   *queueworker.QueueConfig `json:"queue"`
+	Message string                   `json:"message"`
+}
+
 // WorkerHandshake handles worker registration and config retrieval
 // Workers are trusted - they know their queue name and get the config directly
 // @Summary Worker handshake
@@ -264,6 +278,139 @@ func ListQueueConfigs(store *queueworker.Store) gin.HandlerFunc {
 		c.JSON(http.StatusOK, QueuesListResponse{
 			Queues: summaries,
 			Count:  len(summaries),
+		})
+	}
+}
+
+// CreateQueueConfig creates a new queue configuration
+// @Summary Create a new queue configuration
+// @Description Create a new queue configuration from JSON payload
+// @Tags workers
+// @Accept json
+// @Produce json
+// @Param request body CreateQueueRequest true "Queue configuration"
+// @Param force query bool false "Force update if queue already exists"
+// @Success 201 {object} CreateQueueResponse
+// @Failure 400 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /workers/queues [post]
+func CreateQueueConfig(store *queueworker.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req CreateQueueRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Check for force query parameter
+		force := c.Query("force") == "true"
+
+		// Validate deployment if provided
+		if req.Deployment != nil {
+			if req.Deployment.GitURL == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "git_url is required for deployment"})
+				return
+			}
+			if req.Deployment.StartupCmd == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "startup_cmd is required for deployment"})
+				return
+			}
+		}
+
+		ctx := c.Request.Context()
+
+		// Check if queue already exists
+		exists, err := store.Exists(ctx, req.Name)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check queue existence: " + err.Error()})
+			return
+		}
+
+		if exists && !force {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": fmt.Sprintf("queue '%s' already exists. Use --force to update existing queue", req.Name),
+			})
+			return
+		}
+
+		now := time.Now().Unix()
+		cfg := &queueworker.QueueConfig{
+			Name:       req.Name,
+			Priority:   req.Priority,
+			Provider:   req.Provider,
+			Deployment: req.Deployment,
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}
+
+		if err := store.Save(ctx, cfg); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Register in asynq so it appears in monitoring
+		if err := store.RegisterAsynqQueues(ctx, []string{req.Name}); err != nil {
+			log.Printf("Warning: failed to register queue in asynq: %v", err)
+		}
+
+		message := "Queue created successfully"
+		if exists {
+			message = "Queue updated successfully"
+		}
+
+		c.JSON(http.StatusCreated, CreateQueueResponse{
+			Queue:   cfg,
+			Message: message,
+		})
+	}
+}
+
+// DeleteQueueConfig deletes a queue configuration
+// @Summary Delete a queue configuration
+// @Description Delete a queue configuration by name
+// @Tags workers
+// @Produce json
+// @Param queue_name path string true "Queue name"
+// @Success 200 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /workers/queues/{queue_name} [delete]
+func DeleteQueueConfig(store *queueworker.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		queueName := c.Param("queue_name")
+		if queueName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "queue name is required"})
+			return
+		}
+
+		ctx := c.Request.Context()
+
+		// Check if queue exists
+		exists, err := store.Exists(ctx, queueName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check queue existence: " + err.Error()})
+			return
+		}
+
+		if !exists {
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("queue '%s' not found", queueName)})
+			return
+		}
+
+		// Delete the queue
+		if err := store.Delete(ctx, queueName); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Unregister from asynq
+		if err := store.UnregisterAsynqQueues(ctx, []string{queueName}); err != nil {
+			log.Printf("Warning: failed to unregister queue from asynq: %v", err)
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": fmt.Sprintf("Queue '%s' deleted successfully", queueName),
 		})
 	}
 }
