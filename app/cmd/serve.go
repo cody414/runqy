@@ -33,6 +33,7 @@ var (
 	configPath    string
 	cloneDir      string
 	watchInterval int
+	useSQLite     bool
 )
 
 // serveCmd represents the serve command
@@ -45,7 +46,8 @@ REST API, and monitoring dashboard.
 Example:
   runqy serve
   runqy serve --config ./deployment --watch
-  runqy serve --config-repo https://github.com/org/repo.git --watch`,
+  runqy serve --config-repo https://github.com/org/repo.git --watch
+  runqy serve --sqlite    # Use SQLite instead of PostgreSQL (for testing)`,
 	Run: runServe,
 }
 
@@ -60,6 +62,7 @@ func init() {
 	serveCmd.Flags().StringVar(&configPath, "config-path", "", "Path within repo to YAML files")
 	serveCmd.Flags().StringVar(&cloneDir, "clone-dir", "", "Directory to clone repo into (default: downloads)")
 	serveCmd.Flags().IntVar(&watchInterval, "watch-interval", 0, "Git polling interval in seconds (default: 60)")
+	serveCmd.Flags().BoolVar(&useSQLite, "sqlite", false, "Use SQLite instead of PostgreSQL (for testing, NOT recommended for production)")
 }
 
 func runServe(cmd *cobra.Command, args []string) {
@@ -86,6 +89,9 @@ func runServe(cmd *cobra.Command, args []string) {
 	if watchInterval > 0 {
 		cfg.ConfigWatchInterval = watchInterval
 	}
+	if useSQLite {
+		cfg.UseSQLite = true
+	}
 
 	// Create API router
 	router := gin.Default()
@@ -96,16 +102,28 @@ func runServe(cmd *cobra.Command, args []string) {
 		log.Fatalf("[FATAL] Redis build connection failed: %v", err)
 	}
 
-	// Build PostgreSQL connection for queue worker configs
-	pgDB, err := models.BuildPostgresDB(cfg)
+	// Build database connection for queue worker configs (PostgreSQL or SQLite)
+	db, err := models.BuildDB(cfg)
 	if err != nil {
-		log.Fatalf("[FATAL] PostgreSQL connection failed: %v", err)
+		if cfg.UseSQLite {
+			log.Fatalf("[FATAL] SQLite connection failed: %v", err)
+		} else {
+			log.Fatalf("[FATAL] PostgreSQL connection failed: %v", err)
+		}
 	}
-	defer pgDB.Close()
-	log.Println("[INFO] PostgreSQL connection established")
+	defer db.Close()
+
+	if cfg.UseSQLite {
+		log.Println("")
+		log.Println("WARNING: Using SQLite database. This is NOT recommended for production!")
+		log.Printf("[INFO] SQLite database: %s", cfg.SQLiteDBPath)
+		log.Println("")
+	} else {
+		log.Println("[INFO] PostgreSQL connection established")
+	}
 
 	// Ensure database schema exists (creates tables if missing)
-	if err := models.EnsureSchema(pgDB); err != nil {
+	if err := models.EnsureSchema(db); err != nil {
 		log.Fatalf("[FATAL] Failed to initialize database schema: %v", err)
 	}
 
@@ -124,8 +142,8 @@ func runServe(cmd *cobra.Command, args []string) {
 		ReadOnly:     os.Getenv("ASYNQ_READ_ONLY") == "true",
 	})
 
-	// Initialize queue worker store (PostgreSQL for configs, Redis for asynq)
-	qwStore := queueworker.NewStore(pgDB, redisAddr.RDB)
+	// Initialize queue worker store (database for configs, Redis for asynq)
+	qwStore := queueworker.NewStore(db, redisAddr.RDB)
 
 	// Clean up stale workers from previous runs
 	ctx := context.Background()
