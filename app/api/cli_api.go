@@ -1,9 +1,11 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
+	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
 )
@@ -49,12 +51,12 @@ type TaskListResponse struct {
 }
 
 // SetupCLIAPI sets up the CLI-specific API endpoints
-func SetupCLIAPI(r *gin.Engine, inspector *asynq.Inspector) {
+func SetupCLIAPI(r *gin.Engine, inspector *asynq.Inspector, store *queueworker.Store) {
 	api := r.Group("/api")
 	api.Use(Authorize())
 
 	// Queue endpoints
-	api.GET("/queues", listQueuesHandler(inspector))
+	api.GET("/queues", listQueuesHandler(inspector, store))
 	api.GET("/queues/:queue", getQueueHandler(inspector))
 	api.POST("/queues/:queue/pause", pauseQueueHandler(inspector))
 	api.POST("/queues/:queue/unpause", unpauseQueueHandler(inspector))
@@ -66,8 +68,13 @@ func SetupCLIAPI(r *gin.Engine, inspector *asynq.Inspector) {
 	api.POST("/tasks/:task_id/cancel", cancelTaskHandler(inspector))
 }
 
-func listQueuesHandler(inspector *asynq.Inspector) gin.HandlerFunc {
+func listQueuesHandler(inspector *asynq.Inspector, store *queueworker.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Sync configs from PostgreSQL to asynq before listing
+		if err := store.SyncConfigsToAsynq(c.Request.Context()); err != nil {
+			log.Printf("Warning: failed to sync configs to asynq: %v", err)
+		}
+
 		queues, err := inspector.Queues()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

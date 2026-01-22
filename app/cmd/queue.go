@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"text/tabwriter"
 
 	"github.com/Publikey/runqy/models"
+	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/hibiken/asynq"
 	"github.com/spf13/cobra"
 )
@@ -83,10 +85,26 @@ func runQueueList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Local mode: direct Redis access
-	inspector, err := getInspector()
+	// First, sync configs from PostgreSQL to asynq
+	cfg := GetConfig()
+	pgDB, err := models.BuildPostgresDB(cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to PostgreSQL: %w", err)
 	}
+	defer pgDB.Close()
+
+	redisConns, err := models.BuildRedisConns()
+	if err != nil {
+		return fmt.Errorf("failed to connect to Redis: %w", err)
+	}
+	defer redisConns.RDB.Close()
+
+	store := queueworker.NewStore(pgDB, redisConns.RDB)
+	if err := store.SyncConfigsToAsynq(context.Background()); err != nil {
+		fmt.Printf("Warning: failed to sync configs to asynq: %v\n", err)
+	}
+
+	inspector := asynq.NewInspector(redisConns.AsynqOpt)
 	defer inspector.Close()
 
 	queues, err := inspector.Queues()

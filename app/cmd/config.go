@@ -796,6 +796,11 @@ func runConfigRemoveLocal(queueName string) error {
 		return fmt.Errorf("failed to delete queue: %w", err)
 	}
 
+	// Unregister from asynq
+	if err := store.UnregisterAsynqQueues(ctx, []string{queueName}); err != nil {
+		fmt.Printf("Warning: failed to unregister queue from asynq: %v\n", err)
+	}
+
 	fmt.Printf("Queue '%s' deleted successfully\n", queueName)
 	return nil
 }

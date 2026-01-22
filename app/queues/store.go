@@ -204,6 +204,30 @@ func (s *Store) RegisterAsynqQueues(ctx context.Context, queueNames []string) er
 	return s.rdb.SAdd(ctx, asynqQueuesKey, args...).Err()
 }
 
+// UnregisterAsynqQueues removes queue names from asynq's queue registry
+func (s *Store) UnregisterAsynqQueues(ctx context.Context, queueNames []string) error {
+	if len(queueNames) == 0 {
+		return nil
+	}
+	args := make([]interface{}, len(queueNames))
+	for i, name := range queueNames {
+		args[i] = name
+	}
+	return s.rdb.SRem(ctx, asynqQueuesKey, args...).Err()
+}
+
+// SyncConfigsToAsynq ensures all configs in PostgreSQL are registered in asynq
+func (s *Store) SyncConfigsToAsynq(ctx context.Context) error {
+	queues, err := s.ListQueues(ctx)
+	if err != nil {
+		return err
+	}
+	if len(queues) > 0 {
+		return s.RegisterAsynqQueues(ctx, queues)
+	}
+	return nil
+}
+
 // CleanupStaleWorkers removes worker entries that haven't sent a heartbeat recently
 func (s *Store) CleanupStaleWorkers(ctx context.Context) (int, error) {
 	// Scan for all worker keys

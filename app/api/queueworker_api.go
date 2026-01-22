@@ -404,6 +404,11 @@ func DeleteQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 			return
 		}
 
+		// Unregister from asynq
+		if err := store.UnregisterAsynqQueues(ctx, []string{queueName}); err != nil {
+			log.Printf("Warning: failed to unregister queue from asynq: %v", err)
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"message": fmt.Sprintf("Queue '%s' deleted successfully", queueName),
 		})

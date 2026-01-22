@@ -10,7 +10,7 @@ import (
 func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg *config.Config, redisOpt asynq.RedisClientOpt) {
 	// Setup CLI API endpoints (queue/task management)
 	inspector := asynq.NewInspector(redisOpt)
-	SetupCLIAPI(r, inspector)
+	SetupCLIAPI(r, inspector, qwStore)
 	// api GET queue
 	router_predict := r.Group("queue")
 	router_predict.GET("/:uuid/:priority", GetPredictStatus)
