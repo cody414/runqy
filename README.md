@@ -103,6 +103,7 @@ The worker registers with the server, clones the example task code, and starts p
 
 **Step 6: Enqueue a task**
 
+Linux/Mac:
 ```bash
 curl -X POST http://localhost:3000/queue/add \
   -H "Authorization: Bearer dev-api-key" \
@@ -112,6 +113,14 @@ curl -X POST http://localhost:3000/queue/add \
     "timeout": 60,
     "data": {"operation": "uppercase", "data": "hello world"}
   }'
+```
+
+Windows (PowerShell):
+```powershell
+curl.exe -X POST http://localhost:3000/queue/add `
+  -H "Authorization: Bearer dev-api-key" `
+  -H "Content-Type: application/json" `
+  -d '{\"queue\": \"quickstart-oneshot_default\", \"timeout\": 60, \"data\": {\"operation\": \"uppercase\", \"data\": \"hello world\"}}'
 ```
 
 Response:
@@ -124,8 +133,15 @@ Use the `id` from the response in the next step.
 To try long-running mode, just enqueue to `quickstart-longrunning_default` — the worker already listens on both queues.
 
 **Step 7: Check the result**
+
+Linux/Mac:
 ```bash
 curl http://localhost:3000/queue/{id}/quickstart-oneshot_default
+```
+
+Windows (PowerShell):
+```powershell
+curl.exe http://localhost:3000/queue/{id}/quickstart-oneshot_default
 ```
 
 Response: `{"info": {"state": "completed", "result": {"result": "HELLO WORLD"}}}`

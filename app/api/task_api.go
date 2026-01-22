@@ -19,91 +19,71 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// GetPredictStatus godoc
+// GetTaskStatus godoc
 //
 //	@Summary		Get the information about the task in the queue and it's response if any.
 //	@Description	Retrieve the body of the response or the status of the request if has not been processed already.
 //	@Tags			queue
 //	@Accept			json
 //	@Produce		json
-//	@Param			uuid		path		string	true	" the uuid of the task returned from the POST query"
-//	@Param			priority	path		string	true	"`normal` or `priority`"
-//	@Success		200			{object}	models.ResponseGet
-//	@Failure		400			{object}	models.APIErrorResponse
-//	@Router			/queue/{uuid}/{priority} [get]
-func GetPredictStatus(c *gin.Context) {
+//	@Param			uuid	path		string	true	"The uuid of the task returned from the POST query"
+//	@Success		200		{object}	models.ResponseGet
+//	@Failure		400		{object}	models.APIErrorResponse
+//	@Failure		404		{object}	models.APIErrorResponse
+//	@Router			/queue/{uuid} [get]
+func GetTaskStatus(c *gin.Context) {
 	uuid := c.Param("uuid")
-	priority := c.Param("priority")
 
 	redisAddr, err := models.BuildRedisConns()
 	if err != nil {
 		log.Fatalf("[FATAL] Redis build connection failed: %v", err)
 	}
 
+	// Look up queue from task hash: asynq:t:{task_id}
+	taskKey := fmt.Sprintf("asynq:t:%s", uuid)
+	queue, err := redisAddr.RDB.HGet(c, taskKey, "queue").Result()
+	if err == redis.Nil {
+		c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"task not found"}})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
+		return
+	}
+
 	inspector := asynq.NewInspector(redisAddr.AsynqOpt)
 	defer inspector.Close()
 
-	if priority == "priority" {
-		resp, err := waitForResult(context.Background(), inspector, "priority", uuid)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
-			return
-		}
-		// Manual mapping from *asynq.TaskInfo to TaskInfoDoc
-		taskDoc := models.GetTaskInfoDoc{
-			ID:            resp.ID,
-			Type:          resp.Type,
-			Payload:       utilities.DecodeBase64OrReturnRaw(resp.Payload),
-			State:         resp.State.String(),
-			Queue:         resp.Queue,
-			MaxRetry:      resp.MaxRetry,
-			Retried:       resp.Retried,
-			LastErr:       resp.LastErr,
-			LastFailedAt:  resp.LastFailedAt,
-			Deadline:      resp.Deadline,
-			Group:         resp.Group,
-			NextProcessAt: resp.NextProcessAt,
-			IsOrphaned:    resp.IsOrphaned,
-			CompletedAt:   resp.CompletedAt,
-			Result:        utilities.DecodeBase64OrReturnRaw(resp.Result),
-		}
-		response := models.ResponseGet{
-			Info: taskDoc,
-		}
-		c.JSON(http.StatusOK, response)
-	} else {
-		resp, err := waitForResult(context.Background(), inspector, "normal", uuid)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
-			return
-		}
-		// Manual mapping from *asynq.TaskInfo to TaskInfoDoc
-		taskDoc := models.GetTaskInfoDoc{
-			ID:            resp.ID,
-			Type:          resp.Type,
-			Payload:       utilities.DecodeBase64OrReturnRaw(resp.Payload),
-			State:         resp.State.String(),
-			Queue:         resp.Queue,
-			MaxRetry:      resp.MaxRetry,
-			Retried:       resp.Retried,
-			LastErr:       resp.LastErr,
-			LastFailedAt:  resp.LastFailedAt,
-			Deadline:      resp.Deadline,
-			Group:         resp.Group,
-			NextProcessAt: resp.NextProcessAt,
-			IsOrphaned:    resp.IsOrphaned,
-			CompletedAt:   resp.CompletedAt,
-			Result:        utilities.DecodeBase64OrReturnRaw(resp.Result),
-		}
-		response := models.ResponseGet{
-			Info: taskDoc,
-		}
-		c.JSON(http.StatusOK, response)
+	resp, err := waitForResult(context.Background(), inspector, queue, uuid)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
+		return
 	}
 
+	taskDoc := models.GetTaskInfoDoc{
+		ID:            resp.ID,
+		Type:          resp.Type,
+		Payload:       utilities.DecodeBase64OrReturnRaw(resp.Payload),
+		State:         resp.State.String(),
+		Queue:         resp.Queue,
+		MaxRetry:      resp.MaxRetry,
+		Retried:       resp.Retried,
+		LastErr:       resp.LastErr,
+		LastFailedAt:  resp.LastFailedAt,
+		Deadline:      resp.Deadline,
+		Group:         resp.Group,
+		NextProcessAt: resp.NextProcessAt,
+		IsOrphaned:    resp.IsOrphaned,
+		CompletedAt:   resp.CompletedAt,
+		Result:        utilities.DecodeBase64OrReturnRaw(resp.Result),
+	}
+	response := models.ResponseGet{
+		Info: taskDoc,
+	}
+	c.JSON(http.StatusOK, response)
 }
 
-// NewPredict godoc
+// AddTask godoc
 //
 //	@Summary		Send a new task to the queuer
 //	@Description	Send a generic task request with queue, timeout, and a flexible JSON payload.
@@ -115,9 +95,9 @@ func GetPredictStatus(c *gin.Context) {
 //	@Failure		400		{object}	models.APIErrorResponse
 //	@Router			/queue/add [post]
 //
-// NewPredict returns a handler that validates the incoming task `data` against
+// AddTask returns a handler that validates the incoming task `data` against
 // the queue worker YAML schemas found in `qwConfigDir` before enqueuing.
-func NewPredict(qwConfigDir string) gin.HandlerFunc {
+func AddTask(qwConfigDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		query := models.GenericTask{}
 		if err := c.ShouldBindBodyWithJSON(&query); err != nil {

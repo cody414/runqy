@@ -13,10 +13,10 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 	SetupCLIAPI(r, inspector, qwStore)
 	// api GET queue
 	router_predict := r.Group("queue")
-	router_predict.GET("/:uuid/:priority", GetPredictStatus)
+	router_predict.GET("/:uuid", GetTaskStatus)
 	// api POST queue
 	router_predict.Use(Authorize())
-	router_predict.POST("/add", NewPredict(qwConfigDir))
+	router_predict.POST("/add", AddTask(qwConfigDir))
 
 	// Workers API - reads from asynq:workers keys (matching runqy-worker)
 	router_workers := r.Group("workers")

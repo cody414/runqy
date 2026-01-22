@@ -61,7 +61,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/queue/{uuid}/{priority}": {
+        "/queue/{uuid}": {
             "get": {
                 "description": "Retrieve the body of the response or the status of the request if has not been processed already.",
                 "consumes": [
@@ -77,15 +77,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": " the uuid of the task returned from the POST query",
+                        "description": "The uuid of the task returned from the POST query",
                         "name": "uuid",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "` + "`" + `normal` + "`" + ` or ` + "`" + `priority` + "`" + `",
-                        "name": "priority",
                         "in": "path",
                         "required": true
                     }
@@ -99,6 +92,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/models.APIErrorResponse"
                         }

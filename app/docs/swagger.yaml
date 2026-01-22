@@ -190,21 +190,16 @@ info:
   title: Runqy Queue API
   version: "1.0.0"
 paths:
-  /queue/{uuid}/{priority}:
+  /queue/{uuid}:
     get:
       consumes:
       - application/json
       description: Retrieve the body of the response or the status of the request
         if has not been processed already.
       parameters:
-      - description: ' the uuid of the task returned from the POST query'
+      - description: The uuid of the task returned from the POST query
         in: path
         name: uuid
-        required: true
-        type: string
-      - description: '`normal` or `priority`'
-        in: path
-        name: priority
         required: true
         type: string
       produces:
@@ -216,6 +211,10 @@ paths:
             $ref: '#/definitions/models.ResponseGet'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/models.APIErrorResponse'
       summary: Get the information about the task in the queue and it's response if
