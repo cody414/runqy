@@ -95,8 +95,8 @@ The example config is pre-configured for the quickstart with both queues:
 ```yaml
 worker:
   queues:
-    - "quickstart-oneshot:default"
-    - "quickstart-longrunning:default"
+    - "quickstart-oneshot_default"
+    - "quickstart-longrunning_default"
 ```
 
 The worker registers with the server, clones the example task code, and starts processing.
@@ -108,7 +108,7 @@ curl -X POST http://localhost:3000/queue/add \
   -H "Authorization: Bearer dev-api-key" \
   -H "Content-Type: application/json" \
   -d '{
-    "queue": "quickstart-oneshot:default",
+    "queue": "quickstart-oneshot_default",
     "timeout": 60,
     "data": {"operation": "uppercase", "data": "hello world"}
   }'
@@ -116,16 +116,16 @@ curl -X POST http://localhost:3000/queue/add \
 
 Response:
 ```json
-{"info": {"id": "abc123...", "state": "pending", "queue": "quickstart-oneshot:default", ...}, "data": {...}}
+{"info": {"id": "abc123...", "state": "pending", "queue": "quickstart-oneshot_default", ...}, "data": {...}}
 ```
 
 Use the `id` from the response in the next step.
 
-To try long-running mode, just enqueue to `quickstart-longrunning:default` — the worker already listens on both queues.
+To try long-running mode, just enqueue to `quickstart-longrunning_default` — the worker already listens on both queues.
 
 **Step 7: Check the result**
 ```bash
-curl http://localhost:3000/queue/{id}/quickstart-oneshot:default
+curl http://localhost:3000/queue/{id}/quickstart-oneshot_default
 ```
 
 Response: `{"info": {"state": "completed", "result": {"result": "HELLO WORLD"}}}`
