@@ -14,13 +14,13 @@ import (
 
 // QueueWorkerRow represents a row in the queue_workers_config table
 type QueueWorkerRow struct {
-	ID         int             `db:"id"`
-	Name       sql.NullString  `db:"name"`
-	Priority   sql.NullInt64   `db:"priority"`
-	Deployment json.RawMessage `db:"deployment"`
+	ID         int            `db:"id"`
+	Name       sql.NullString `db:"name"`
+	Priority   sql.NullInt64  `db:"priority"`
+	Deployment sql.NullString `db:"deployment"` // JSON stored as TEXT for SQLite compatibility
 }
 
-// Store handles PostgreSQL operations for queue configurations
+// Store handles database operations for queue configurations (PostgreSQL or SQLite)
 // Redis is still used for asynq-related operations
 type Store struct {
 	db  *sqlx.DB
@@ -32,7 +32,7 @@ func NewStore(db *sqlx.DB, rdb *redis.Client) *Store {
 	return &Store{db: db, rdb: rdb}
 }
 
-// Save stores or updates a queue configuration in PostgreSQL
+// Save stores or updates a queue configuration in the database
 func (s *Store) Save(ctx context.Context, cfg *QueueConfig) error {
 	// Marshal deployment if present
 	var deploymentJSON sql.NullString
@@ -47,13 +47,13 @@ func (s *Store) Save(ctx context.Context, cfg *QueueConfig) error {
 		// The deployment can be nil if it's only a key API for external services (think Google or OpenAI etc.)
 		deploymentJSON = sql.NullString{Valid: false}
 	}
-	query := `
+	query := s.db.Rebind(`
 		INSERT INTO queue_workers_config (name, priority, deployment)
-		VALUES ($1, $2, $3)
+		VALUES (?, ?, ?)
 		ON CONFLICT (name) DO UPDATE SET
-			priority = EXCLUDED.priority,
-			deployment = EXCLUDED.deployment
-	`
+			priority = excluded.priority,
+			deployment = excluded.deployment
+	`)
 
 	_, err = s.db.ExecContext(ctx, query,
 		cfg.Name,
@@ -67,13 +67,13 @@ func (s *Store) Save(ctx context.Context, cfg *QueueConfig) error {
 	return nil
 }
 
-// Get retrieves a queue configuration from PostgreSQL
+// Get retrieves a queue configuration from the database
 func (s *Store) Get(ctx context.Context, queueName string) (*QueueConfig, error) {
-	query := `
+	query := s.db.Rebind(`
 		SELECT id, name, priority, deployment
 		FROM queue_workers_config
-		WHERE name = $1
-	`
+		WHERE name = ?
+	`)
 
 	var row QueueWorkerRow
 	err := s.db.GetContext(ctx, &row, query, queueName)
@@ -92,10 +92,10 @@ func (s *Store) Get(ctx context.Context, queueName string) (*QueueConfig, error)
 		cfg.Priority = int(row.Priority.Int64)
 	}
 
-	// Unmarshal deployment if present
-	if len(row.Deployment) > 0 && string(row.Deployment) != "null" {
+	// Unmarshal deployment if present (stored as TEXT/JSON string)
+	if row.Deployment.Valid && row.Deployment.String != "" && row.Deployment.String != "null" {
 		var deployment DeploymentConfig
-		if err := json.Unmarshal(row.Deployment, &deployment); err == nil {
+		if err := json.Unmarshal([]byte(row.Deployment.String), &deployment); err == nil {
 			cfg.Deployment = &deployment
 		}
 	}
@@ -107,25 +107,27 @@ func (s *Store) Get(ctx context.Context, queueName string) (*QueueConfig, error)
 func (s *Store) ListQueues(ctx context.Context) ([]string, error) {
 	query := `SELECT name FROM queue_workers_config ORDER BY name`
 
-	var names []sql.NullString
-	err := s.db.SelectContext(ctx, &names, query)
+	// Use a struct wrapper for better SQLite compatibility
+	type nameRow struct {
+		Name string `db:"name"`
+	}
+	var rows []nameRow
+	err := s.db.SelectContext(ctx, &rows, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list queues: %w", err)
 	}
 
-	queues := make([]string, 0, len(names))
-	for _, n := range names {
-		if n.Valid {
-			queues = append(queues, n.String)
-		}
+	queues := make([]string, 0, len(rows))
+	for _, r := range rows {
+		queues = append(queues, r.Name)
 	}
 
 	return queues, nil
 }
 
-// Delete removes a queue configuration from PostgreSQL
+// Delete removes a queue configuration from the database
 func (s *Store) Delete(ctx context.Context, queueName string) error {
-	query := `DELETE FROM queue_workers_config WHERE name = $1`
+	query := s.db.Rebind(`DELETE FROM queue_workers_config WHERE name = ?`)
 	_, err := s.db.ExecContext(ctx, query, queueName)
 	if err != nil {
 		return fmt.Errorf("failed to delete config: %w", err)
@@ -135,12 +137,12 @@ func (s *Store) Delete(ctx context.Context, queueName string) error {
 
 // ListByPrefix returns all queue configurations that start with the given prefix
 func (s *Store) ListByPrefix(ctx context.Context, prefix string) ([]*QueueConfig, error) {
-	query := `
+	query := s.db.Rebind(`
 		SELECT id, name, priority, deployment
 		FROM queue_workers_config
-		WHERE name LIKE $1
+		WHERE name LIKE ?
 		ORDER BY priority DESC
-	`
+	`)
 
 	var rows []QueueWorkerRow
 	err := s.db.SelectContext(ctx, &rows, query, prefix+"%")
@@ -158,10 +160,10 @@ func (s *Store) ListByPrefix(ctx context.Context, prefix string) ([]*QueueConfig
 			cfg.Priority = int(row.Priority.Int64)
 		}
 
-		// Unmarshal deployment if present
-		if len(row.Deployment) > 0 && string(row.Deployment) != "null" {
+		// Unmarshal deployment if present (stored as TEXT/JSON string)
+		if row.Deployment.Valid && row.Deployment.String != "" && row.Deployment.String != "null" {
 			var deployment DeploymentConfig
-			if err := json.Unmarshal(row.Deployment, &deployment); err == nil {
+			if err := json.Unmarshal([]byte(row.Deployment.String), &deployment); err == nil {
 				cfg.Deployment = &deployment
 			}
 		}
@@ -174,7 +176,7 @@ func (s *Store) ListByPrefix(ctx context.Context, prefix string) ([]*QueueConfig
 
 // Exists checks if a queue configuration exists
 func (s *Store) Exists(ctx context.Context, queueName string) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM queue_workers_config WHERE name = $1)`
+	query := s.db.Rebind(`SELECT EXISTS(SELECT 1 FROM queue_workers_config WHERE name = ?)`)
 
 	var exists bool
 	err := s.db.GetContext(ctx, &exists, query, queueName)
@@ -216,7 +218,7 @@ func (s *Store) UnregisterAsynqQueues(ctx context.Context, queueNames []string) 
 	return s.rdb.SRem(ctx, asynqQueuesKey, args...).Err()
 }
 
-// SyncConfigsToAsynq ensures all configs in PostgreSQL are registered in asynq
+// SyncConfigsToAsynq ensures all configs in the database are registered in asynq
 func (s *Store) SyncConfigsToAsynq(ctx context.Context) error {
 	queues, err := s.ListQueues(ctx)
 	if err != nil {

@@ -46,6 +46,10 @@ type Config struct {
 	PostgresDB       string
 	PostgresSSL      string
 
+	// SQLite (alternative to PostgreSQL for local development)
+	UseSQLite    bool
+	SQLiteDBPath string
+
 	// GitHub Repository Config
 	ConfigRepoURL       string
 	ConfigRepoBranch    string
@@ -95,6 +99,9 @@ func Load() *Config {
 		PostgresPassword: os.Getenv("DATABASE_PASSWORD"),
 		PostgresDB:       getEnv("DATABASE_DBNAME", "sdxl_queuing_dev"),
 		PostgresSSL:      getEnv("DATABASE_SSL", "disable"),
+
+		// SQLite (UseSQLite is set by CLI flag, not env var)
+		SQLiteDBPath: getEnv("SQLITE_DB_PATH", "runqy.db"),
 
 		// GitHub Repository Config
 		ConfigRepoURL:       os.Getenv("CONFIG_REPO_URL"),
