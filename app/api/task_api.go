@@ -99,19 +99,65 @@ func GetTaskStatus(c *gin.Context) {
 // the queue worker YAML schemas found in `qwConfigDir` before enqueuing.
 func AddTask(qwConfigDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		query := models.GenericTask{}
-		if err := c.ShouldBindBodyWithJSON(&query); err != nil {
-			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
-			return
-		}
+        // Parse as raw JSON to support both flat and nested formats
+        var rawBody map[string]json.RawMessage
+        if err := c.ShouldBindBodyWithJSON(&rawBody); err != nil {
+            c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
+            return
+        }
 
-		if query.Queue == "" {
-			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"queue is required"}})
-			return
-		}
+        // Extract queue (required)
+        var queue string
+        if queueRaw, ok := rawBody["queue"]; ok {
+            if err := json.Unmarshal(queueRaw, &queue); err != nil {
+                c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"invalid queue field: " + err.Error()}})
+                return
+            }
+        }
+        if queue == "" {
+            c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"queue is required"}})
+            return
+        }
 
-		// Prepare payloadToSend (TypedPayload by default)
-		var payloadToSend interface{}
+        // Extract timeout (required)
+        var timeout int64
+        if timeoutRaw, ok := rawBody["timeout"]; ok {
+            if err := json.Unmarshal(timeoutRaw, &timeout); err != nil {
+                c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"invalid timeout field: " + err.Error()}})
+                return
+            }
+        }
+
+        // Determine the data payload
+        var dataBytes json.RawMessage
+        if dataRaw, ok := rawBody["data"]; ok {
+            // Nested format: use "data" field directly
+            dataBytes = dataRaw
+        } else {
+            // Flat format: collect all fields except queue and timeout
+            flatData := make(map[string]json.RawMessage)
+            for k, v := range rawBody {
+                if k != "queue" && k != "timeout" {
+                    flatData[k] = v
+                }
+            }
+            var err error
+            dataBytes, err = json.Marshal(flatData)
+            if err != nil {
+                c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"failed to build data payload: " + err.Error()}})
+                return
+            }
+        }
+
+        // Build query struct for compatibility with rest of the code
+        query := models.GenericTask{
+            Queue:   queue,
+            Timeout: timeout,
+            Data:    dataBytes,
+        }
+
+        // Prepare payloadToSend (TypedPayload by default)
+        var payloadToSend interface{}
 
 		// Validate payload against YAML schema for this queue if available
 		yamls, err := queueworker.LoadAll(qwConfigDir)
