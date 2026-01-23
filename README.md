@@ -136,15 +136,15 @@ To try long-running mode, just enqueue to `quickstart-longrunning_default` — t
 
 Linux/Mac:
 ```bash
-curl http://localhost:3000/queue/{id}/quickstart-oneshot_default
+curl http://localhost:3000/queue/{id}
 ```
 
 Windows (PowerShell):
 ```powershell
-curl.exe http://localhost:3000/queue/{id}/quickstart-oneshot_default
+curl.exe http://localhost:3000/queue/{id}
 ```
 
-Response: `{"info": {"state": "completed", "result": {"result": "HELLO WORLD"}}}`
+Response: `{"info": {"state": "completed", "queue": "quickstart-oneshot_default", "result": {"result": "HELLO WORLD"}}}`
 
 **Step 8: Monitor**
 
