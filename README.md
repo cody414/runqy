@@ -20,74 +20,101 @@
 - Swagger API documentation
 - Hot-reload of queue configurations (file watching or git polling)
 
+## Installation
+
+### Quick Install (Recommended)
+
+**Linux/macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/publikey/runqy/main/install.sh | sh
+```
+
+**Windows (PowerShell):**
+```powershell
+iwr https://raw.githubusercontent.com/publikey/runqy/main/install.ps1 -useb | iex
+```
+
+### Docker
+
+```bash
+docker pull ghcr.io/publikey/runqy:latest
+```
+
+### From Source
+
+Requires Go 1.24+:
+```bash
+git clone https://github.com/Publikey/runqy.git
+cd runqy/app
+go build -o runqy .
+```
+
 ## Requirements
 
-- Go 1.24+
 - Redis
 - PostgreSQL (only for production - SQLite is embedded for development)
 
 ## Quick Start
 
-**Step 1: Clone the repos**
+**Step 1: Install runqy and runqy-worker**
+
+See [Installation](#installation) above, or use Docker Compose for the full stack:
 ```bash
 git clone https://github.com/Publikey/runqy.git
-git clone https://github.com/Publikey/runqy-worker.git
+cd runqy
+docker-compose up -d
 ```
 
-**Step 2: Start Redis**
+**Step 2: Start Redis** (skip if using Docker Compose)
 ```bash
 docker run -d --name redis -p 6379:6379 redis:alpine
 ```
 
-**Step 3: Start the server**
+**Step 3: Start the server** (skip if using Docker Compose)
 
 Linux/Mac:
 ```bash
-cd runqy/app
 export REDIS_HOST=localhost
 export REDIS_PORT=6379
 export REDIS_PASSWORD=""
 export RUNQY_API_KEY=dev-api-key
-go run . serve --sqlite
+runqy serve --sqlite
 ```
 
 Windows (PowerShell):
 ```powershell
-cd runqy/app
 $env:REDIS_HOST = "localhost"
 $env:REDIS_PORT = "6379"
 $env:REDIS_PASSWORD = ""
 $env:RUNQY_API_KEY = "dev-api-key"
-go run . serve --sqlite
+runqy serve --sqlite
 ```
 
-**Step 4: Deploy the example queues** (in another terminal)
+**Step 4: Deploy the example queues** (in another terminal, skip if using Docker Compose)
 
 Linux/Mac:
 ```bash
-cd runqy/app
-go build -o runqy .
-./runqy login -s http://localhost:3000 -k dev-api-key
-./runqy config create -f ../examples/quickstart.yaml
+runqy login -s http://localhost:3000 -k dev-api-key
+runqy config create -f examples/quickstart.yaml
 ```
 
 Windows (PowerShell):
 ```powershell
-cd runqy/app
-go build -o runqy.exe .
-.\runqy.exe login -s http://localhost:3000 -k dev-api-key
-.\runqy.exe config create -f ..\examples\quickstart.yaml
+runqy login -s http://localhost:3000 -k dev-api-key
+runqy config create -f examples\quickstart.yaml
 ```
 
 This deploys two example queues:
 - `quickstart-oneshot` - spawns a new Python process per task
 - `quickstart-longrunning` - keeps Python process alive between tasks
 
-**Step 5: Start a worker** (in another terminal)
+**Step 5: Start a worker** (in another terminal, skip if using Docker Compose)
 ```bash
-cd runqy-worker
-cp config.yml.example config.yml
-go run ./cmd/worker
+# Download example config
+curl -fsSL https://raw.githubusercontent.com/publikey/runqy-worker/main/config.yml.example -o config.yml
+
+# Start worker
+runqy-worker -config config.yml
 ```
 
 The example config is pre-configured for the quickstart with both queues:
