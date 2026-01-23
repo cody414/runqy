@@ -24,9 +24,34 @@
 - Swagger API documentation
 - Hot-reload of queue configurations (file watching or git polling)
 
+## Why runqy?
+
+**Your workers, your machines, your rules.**
+
+- **Use hardware you already have** — Your gaming GPU, lab server, or cloud VMs. Anything can become a worker.
+- **No vendor lock-in** — Mix providers freely: on-prem, AWS, GCP, Lambda. Your code stays the same.
+- **Free and open source** — No per-task pricing. Self-host the broker, run workers anywhere.
+- **Zero migration pain** — Switching providers? Moving in-house? Workers move, code doesn't change.
+
+## How It Works
+
+<p align="center">
+  <img src="assets/architecture.png" alt="runqy architecture" width="700">
+</p>
+
+Tasks flow from clients through the runqy server to queues, then to workers running anywhere—on-premise servers, AWS, GCP, Azure, or Kubernetes. Results return through the same path.
+
+## Zero-touch Deployment
+
+<p align="center">
+  <img src="assets/code_pull.png" alt="zero-touch deployment flow" width="700">
+</p>
+
+Workers are stateless. On startup, they connect to the runqy server, pull your code from Git, install dependencies, and start processing—no manual setup required. Update your code, and workers automatically pick up changes on their next restart.
+
 ## Installation
 
-### Quick Install (Recommended)
+### Quick Install
 
 **Linux/macOS:**
 ```bash
@@ -44,28 +69,6 @@ iwr https://raw.githubusercontent.com/publikey/runqy/main/install.ps1 -useb | ie
 docker pull ghcr.io/publikey/runqy:latest
 ```
 
-### Docker Compose Quickstart
-
-Run the full stack without cloning the repo:
-
-```bash
-# Download and start
-curl -O https://raw.githubusercontent.com/Publikey/runqy/main/docker-compose.quickstart.yml
-docker-compose -f docker-compose.quickstart.yml up -d
-
-# Access dashboard
-open http://localhost:3000/monitoring/
-```
-
-### From Source
-
-Requires Go 1.24+:
-```bash
-git clone https://github.com/Publikey/runqy.git
-cd runqy/app
-go build -o runqy .
-```
-
 ## Requirements
 
 - Redis
@@ -73,161 +76,16 @@ go build -o runqy .
 
 ## Quick Start
 
-**Step 1: Install runqy and runqy-worker**
+The fastest way to try runqy:
 
-See [Installation](#installation) above, or use Docker Compose Quickstart (no source code required):
 ```bash
 curl -O https://raw.githubusercontent.com/Publikey/runqy/main/docker-compose.quickstart.yml
 docker-compose -f docker-compose.quickstart.yml up -d
 ```
 
-Or clone the repo for full development setup:
-```bash
-git clone https://github.com/Publikey/runqy.git
-cd runqy
-docker-compose up -d
-```
+Then visit http://localhost:3000/monitoring/
 
-**Step 2: Start Redis** (skip if using Docker Compose)
-```bash
-docker run -d --name redis -p 6379:6379 redis:alpine
-```
-
-**Step 3: Start the server** (skip if using Docker Compose)
-
-Linux/Mac:
-```bash
-export REDIS_HOST=localhost
-export REDIS_PORT=6379
-export REDIS_PASSWORD=""
-export RUNQY_API_KEY=dev-api-key
-runqy serve --sqlite
-```
-
-Windows (PowerShell):
-```powershell
-$env:REDIS_HOST = "localhost"
-$env:REDIS_PORT = "6379"
-$env:REDIS_PASSWORD = ""
-$env:RUNQY_API_KEY = "dev-api-key"
-runqy serve --sqlite
-```
-
-**Step 4: Deploy the example queues** (in another terminal, skip if using Docker Compose)
-
-Linux/Mac:
-```bash
-# Download example config
-curl -fsSL https://raw.githubusercontent.com/Publikey/runqy/main/examples/quickstart.yaml -o quickstart.yaml
-
-runqy login -s http://localhost:3000 -k dev-api-key
-runqy config create -f quickstart.yaml
-```
-
-Windows (PowerShell):
-```powershell
-# Download example config
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Publikey/runqy/main/examples/quickstart.yaml" -OutFile "quickstart.yaml"
-
-runqy login -s http://localhost:3000 -k dev-api-key
-runqy config create -f quickstart.yaml
-```
-
-This deploys two example queues:
-- `quickstart-oneshot` - spawns a new Python process per task
-- `quickstart-longrunning` - keeps Python process alive between tasks
-
-**Step 5: Start a worker** (in another terminal, skip if using Docker Compose)
-
-Install `runqy-worker` using one of these methods:
-
-**Option A: Quick Install**
-```bash
-curl -fsSL https://raw.githubusercontent.com/publikey/runqy-worker/main/install.sh | sh
-```
-
-**Option B: Binary Download**
-```bash
-curl -LO https://github.com/publikey/runqy-worker/releases/latest/download/runqy-worker_latest_linux_amd64.tar.gz
-tar -xzf runqy-worker_latest_linux_amd64.tar.gz
-```
-
-**Option C: Docker**
-```bash
-docker pull ghcr.io/publikey/runqy-worker:latest
-```
-
-Then download the example config and run:
-```bash
-# Download example config
-curl -fsSL https://raw.githubusercontent.com/publikey/runqy-worker/main/config.yml.example -o config.yml
-
-# Start worker (binary)
-runqy-worker -config config.yml
-
-# Or with Docker
-docker run -v $(pwd)/config.yml:/app/config.yml ghcr.io/publikey/runqy-worker:latest
-```
-
-The example config is pre-configured for the quickstart with both queues:
-
-```yaml
-worker:
-  queues:
-    - "quickstart-oneshot_default"
-    - "quickstart-longrunning_default"
-```
-
-The worker registers with the server, clones the example task code, and starts processing.
-
-**Step 6: Enqueue a task**
-
-Linux/Mac:
-```bash
-curl -X POST http://localhost:3000/queue/add \
-  -H "Authorization: Bearer dev-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "queue": "quickstart-oneshot_default",
-    "timeout": 60,
-    "data": {"operation": "uppercase", "data": "hello world"}
-  }'
-```
-
-Windows (PowerShell):
-```powershell
-curl.exe -X POST http://localhost:3000/queue/add `
-  -H "Authorization: Bearer dev-api-key" `
-  -H "Content-Type: application/json" `
-  -d '{\"queue\": \"quickstart-oneshot_default\", \"timeout\": 60, \"data\": {\"operation\": \"uppercase\", \"data\": \"hello world\"}}'
-```
-
-Response:
-```json
-{"info": {"id": "abc123...", "state": "pending", "queue": "quickstart-oneshot_default", ...}, "data": {...}}
-```
-
-Use the `id` from the response in the next step.
-
-To try long-running mode, just enqueue to `quickstart-longrunning_default` — the worker already listens on both queues.
-
-**Step 7: Check the result**
-
-Linux/Mac:
-```bash
-curl http://localhost:3000/queue/{id}
-```
-
-Windows (PowerShell):
-```powershell
-curl.exe http://localhost:3000/queue/{id}
-```
-
-Response: `{"info": {"state": "completed", "queue": "quickstart-oneshot_default", "result": {"result": "HELLO WORLD"}}}`
-
-**Step 8: Monitor**
-
-Visit http://localhost:3000/monitoring/
+See the [Quickstart Guide](https://docs.runqy.com/getting-started/quickstart/) for full walkthrough including enqueueing tasks, or check [Installation Methods](https://docs.runqy.com/getting-started/installation/) for other setup options.
 
 ## CLI
 
