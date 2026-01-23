@@ -113,14 +113,20 @@ runqy serve --sqlite
 
 Linux/Mac:
 ```bash
+# Download example config
+curl -fsSL https://raw.githubusercontent.com/Publikey/runqy/main/examples/quickstart.yaml -o quickstart.yaml
+
 runqy login -s http://localhost:3000 -k dev-api-key
-runqy config create -f examples/quickstart.yaml
+runqy config create -f quickstart.yaml
 ```
 
 Windows (PowerShell):
 ```powershell
+# Download example config
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Publikey/runqy/main/examples/quickstart.yaml" -OutFile "quickstart.yaml"
+
 runqy login -s http://localhost:3000 -k dev-api-key
-runqy config create -f examples\quickstart.yaml
+runqy config create -f quickstart.yaml
 ```
 
 This deploys two example queues:
