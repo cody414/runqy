@@ -1,0 +1,85 @@
+# docker-compose.quickstart.yml
+# Quickstart: Run runqy without source code
+#
+# Usage:
+#   curl -O https://raw.githubusercontent.com/Publikey/runqy/main/docker-compose.quickstart.yml
+#   docker-compose -f docker-compose.quickstart.yml up
+#
+# Access:
+#   - Dashboard: http://localhost:3000/monitoring/
+#   - API: http://localhost:3000
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: runqy
+      POSTGRES_PASSWORD: runqy
+      POSTGRES_DB: runqy
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U runqy"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  runqy-server:
+    image: ghcr.io/publikey/runqy:latest
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_USER: runqy
+      DATABASE_PASSWORD: runqy
+      DATABASE_DBNAME: runqy
+      RUNQY_API_KEY: dev-api-key
+      QUEUE_WORKERS_DIR: /app/queueworkers
+    volumes:
+      - ./examples/quickstart.yaml:/app/queueworkers/quickstart.yaml:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/workers"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  runqy-worker:
+    image: ghcr.io/publikey/runqy-worker:latest
+    environment:
+      RUNQY_SERVER_URL: http://runqy-server:3000
+      RUNQY_API_KEY: dev-api-key
+      RUNQY_QUEUES: quickstart-longrunning_default,quickstart-oneshot_default
+    volumes:
+      - worker_deployment:/app/deployment
+    depends_on:
+      runqy-server:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+  postgres_data:
+  worker_deployment:

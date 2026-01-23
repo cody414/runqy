@@ -40,6 +40,19 @@ iwr https://raw.githubusercontent.com/publikey/runqy/main/install.ps1 -useb | ie
 docker pull ghcr.io/publikey/runqy:latest
 ```
 
+### Docker Compose Quickstart
+
+Run the full stack without cloning the repo:
+
+```bash
+# Download and start
+curl -O https://raw.githubusercontent.com/Publikey/runqy/main/docker-compose.quickstart.yml
+docker-compose -f docker-compose.quickstart.yml up -d
+
+# Access dashboard
+open http://localhost:3000/monitoring/
+```
+
 ### From Source
 
 Requires Go 1.24+:
@@ -58,7 +71,13 @@ go build -o runqy .
 
 **Step 1: Install runqy and runqy-worker**
 
-See [Installation](#installation) above, or use Docker Compose for the full stack:
+See [Installation](#installation) above, or use Docker Compose Quickstart (no source code required):
+```bash
+curl -O https://raw.githubusercontent.com/Publikey/runqy/main/docker-compose.quickstart.yml
+docker-compose -f docker-compose.quickstart.yml up -d
+```
+
+Or clone the repo for full development setup:
 ```bash
 git clone https://github.com/Publikey/runqy.git
 cd runqy
@@ -109,12 +128,35 @@ This deploys two example queues:
 - `quickstart-longrunning` - keeps Python process alive between tasks
 
 **Step 5: Start a worker** (in another terminal, skip if using Docker Compose)
+
+Install `runqy-worker` using one of these methods:
+
+**Option A: Quick Install**
+```bash
+curl -fsSL https://raw.githubusercontent.com/publikey/runqy-worker/main/install.sh | sh
+```
+
+**Option B: Binary Download**
+```bash
+curl -LO https://github.com/publikey/runqy-worker/releases/latest/download/runqy-worker_latest_linux_amd64.tar.gz
+tar -xzf runqy-worker_latest_linux_amd64.tar.gz
+```
+
+**Option C: Docker**
+```bash
+docker pull ghcr.io/publikey/runqy-worker:latest
+```
+
+Then download the example config and run:
 ```bash
 # Download example config
 curl -fsSL https://raw.githubusercontent.com/publikey/runqy-worker/main/config.yml.example -o config.yml
 
-# Start worker
+# Start worker (binary)
 runqy-worker -config config.yml
+
+# Or with Docker
+docker run -v $(pwd)/config.yml:/app/config.yml ghcr.io/publikey/runqy-worker:latest
 ```
 
 The example config is pre-configured for the quickstart with both queues:
@@ -200,7 +242,7 @@ See [Configuration Reference](https://docs.runqy.com/server/configuration/) for 
 
 ## See Also
 
-- [runqy-worker](https://github.com/Publikey/runqy-worker) - Task processor
+- [runqy-worker](https://github.com/Publikey/runqy-worker) - Task processor ([Docker images](https://ghcr.io/publikey/runqy-worker))
 - [runqy-python](https://github.com/Publikey/runqy-python) - Python SDK
 - [Documentation](https://docs.runqy.com) - Full documentation
 
