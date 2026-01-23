@@ -10,6 +10,10 @@
   <a href="https://docs.runqy.com"><strong>Documentation</strong></a> · <a href="https://runqy.com"><strong>Website</strong></a>
 </p>
 
+<p align="center">
+  Built on <a href="https://github.com/hibiken/asynq">asynq</a>
+</p>
+
 ## Features
 
 - REST API for enqueueing and monitoring tasks
@@ -248,6 +252,7 @@ See [Configuration Reference](https://docs.runqy.com/server/configuration/) for 
 
 ## See Also
 
+- [asynq](https://github.com/hibiken/asynq) - The distributed task queue library that powers runqy
 - [runqy-worker](https://github.com/Publikey/runqy-worker) - Task processor ([Docker images](https://ghcr.io/publikey/runqy-worker))
 - [runqy-python](https://github.com/Publikey/runqy-python) - Python SDK
 - [Documentation](https://docs.runqy.com) - Full documentation
