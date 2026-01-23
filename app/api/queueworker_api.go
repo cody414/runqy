@@ -184,9 +184,9 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 				return
 			}
 
-			// Default behavior: auto-create single sub-queue named "{queue}_default"
+			// Queue found by exact match - use its name directly as the sub-queue
 			subQueues = []SubQueueConfig{{
-				Name:     queueName + "_default",
+				Name:     queueCfg.Name,
 				Priority: queueCfg.Priority,
 			}}
 		}
