@@ -34,6 +34,9 @@ func EnqueuePredictTask(client *asynq.Client, rdb *redis.Client, queue string, t
 		return nil, err
 	}
 
+	// Store queue name in task hash for reverse lookup (GET /queue/{task_id})
+	rdb.HSet(context.Background(), "asynq:t:"+taskInfo.ID, "queue", queue)
+
 	// Register queue for asynqmon visibility
 	rdb.SAdd(context.Background(), "asynq:queues", queue)
 
@@ -72,6 +75,9 @@ func EnqueueGenericTask(client *asynq.Client, rdb *redis.Client, queue string, t
 	if err != nil {
 		return nil, err
 	}
+
+	// Store queue name in task hash for reverse lookup (GET /queue/{task_id})
+	rdb.HSet(context.Background(), "asynq:t:"+taskInfo.ID, "queue", queue)
 
 	// Register queue for asynqmon visibility
 	rdb.SAdd(context.Background(), "asynq:queues", queue)
