@@ -138,6 +138,7 @@ func (q *QueueYAML) ToQueueConfigs(baseName string) []*QueueConfig {
 			EnvVars:            q.Deployment.EnvVars,
 			StartupTimeoutSecs: q.Deployment.StartupTimeoutSecs,
 			RedisStorage:       q.Deployment.RedisStorage,
+			Vaults:             q.Deployment.Vaults,
 		}
 	}
 

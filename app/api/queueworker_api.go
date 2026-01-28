@@ -51,6 +51,7 @@ type WorkerDeploymentConfig struct {
 	Mode               string            `json:"mode,omitempty"`
 	EnvVars            map[string]string `json:"env_vars"`
 	StartupTimeoutSecs int               `json:"startup_timeout_secs"`
+	Vaults             []string          `json:"vaults,omitempty"`
 }
 
 // WorkerConfigResponse is the full response for worker registration
@@ -59,6 +60,7 @@ type WorkerConfigResponse struct {
 	Queue      WorkerQueueConfig      `json:"queue"`
 	SubQueues  []SubQueueConfig       `json:"sub_queues"`
 	Deployment WorkerDeploymentConfig `json:"deployment"`
+	Vaults     map[string]string      `json:"vaults,omitempty"` // Decrypted vault key-value pairs
 }
 
 // HandshakeErrorResponse is returned on handshake errors
@@ -202,6 +204,24 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 				Mode:               queueCfg.Deployment.Mode,
 				EnvVars:            resolveEnvVars(queueCfg.Deployment.EnvVars),
 				StartupTimeoutSecs: queueCfg.Deployment.StartupTimeoutSecs,
+				Vaults:             queueCfg.Deployment.Vaults,
+			}
+		}
+
+		// Resolve vaults if configured
+		var vaultData map[string]string
+		if len(deployment.Vaults) > 0 {
+			vaultStore := GetVaultStore()
+			if vaultStore != nil && vaultStore.IsEnabled() {
+				data, err := vaultStore.GetMultipleVaultsData(c.Request.Context(), deployment.Vaults)
+				if err != nil {
+					log.Printf("[VAULTS] Warning: failed to resolve vaults for queue %s: %v", queueName, err)
+				} else {
+					vaultData = data
+					log.Printf("[VAULTS] Resolved %d vault entries for queue %s from vaults: %v", len(vaultData), queueName, deployment.Vaults)
+				}
+			} else {
+				log.Printf("[VAULTS] Warning: vaults requested for queue %s but vaults feature is disabled", queueName)
 			}
 		}
 
@@ -218,6 +238,7 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 			},
 			SubQueues:  subQueues,
 			Deployment: deployment,
+			Vaults:     vaultData,
 		})
 	}
 }

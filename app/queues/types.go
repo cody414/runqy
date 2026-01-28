@@ -42,6 +42,7 @@ type DeploymentYAML struct {
 	EnvVars            map[string]string `yaml:"env_vars"`
 	StartupTimeoutSecs int               `yaml:"startup_timeout_secs"`
 	RedisStorage       *bool             `yaml:"redis_storage,omitempty"`
+	Vaults             []string          `yaml:"vaults,omitempty"` // List of vault names to inject as env vars
 }
 
 // QueueConfig is the runtime representation stored in DB and returned via API
@@ -64,6 +65,7 @@ type DeploymentConfig struct {
 	EnvVars            map[string]string `json:"env_vars"`
 	StartupTimeoutSecs int               `json:"startup_timeout_secs"`
 	RedisStorage       *bool             `json:"redis_storage,omitempty"`
+	Vaults             []string          `json:"vaults,omitempty"` // List of vault names to inject as env vars
 }
 
 // QueueSummary is a lightweight version for listing queues

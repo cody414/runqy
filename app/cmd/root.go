@@ -85,8 +85,9 @@ func GetAPIKey() string {
 func initConfig() {
 	// Load .env file if present (for local development)
 	// Looks for .env.secret in parent dir, then .env in current dir
-	if err := godotenv.Load("../.env.secret"); err != nil {
-		_ = godotenv.Load() // Try .env as fallback
+	// Use Overload to ensure .env.secret values take priority over existing env vars
+	if err := godotenv.Overload("../.env.secret"); err != nil {
+		_ = godotenv.Overload() // Try .env as fallback
 	}
 
 	// Load configuration from environment

@@ -314,6 +314,7 @@ type DeploymentConfigAPI struct {
 	Mode               string            `json:"mode,omitempty"`
 	EnvVars            map[string]string `json:"env_vars,omitempty"`
 	StartupTimeoutSecs int               `json:"startup_timeout_secs,omitempty"`
+	Vaults             []string          `json:"vaults,omitempty"`
 }
 
 // ConfigListResponse is the response for listing configs
@@ -403,5 +404,137 @@ func (c *APIClient) CreateQueue(req *CreateQueueRequest, force bool) (*CreateQue
 // DeleteQueue deletes a queue configuration
 func (c *APIClient) DeleteQueue(queueName string) error {
 	_, err := c.DELETE("/workers/queues/" + queueName)
+	return err
+}
+
+// --- Vault API Types ---
+
+// VaultSummaryAPI represents a vault summary from the API
+type VaultSummaryAPI struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	EntryCount  int    `json:"entry_count"`
+}
+
+// VaultEntryViewAPI represents a vault entry from the API
+type VaultEntryViewAPI struct {
+	Key       string `json:"key"`
+	Value     string `json:"value"`
+	IsSecret  bool   `json:"is_secret"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// VaultDetailAPI represents a vault with entries from the API
+type VaultDetailAPI struct {
+	Name        string              `json:"name"`
+	Description string              `json:"description"`
+	Entries     []VaultEntryViewAPI `json:"entries"`
+	CreatedAt   string              `json:"created_at"`
+	UpdatedAt   string              `json:"updated_at"`
+}
+
+// VaultsListResponseAPI is the response for listing vaults
+type VaultsListResponseAPI struct {
+	Vaults []VaultSummaryAPI `json:"vaults"`
+	Count  int               `json:"count"`
+}
+
+// VaultEntriesResponseAPI is the response for listing vault entries
+type VaultEntriesResponseAPI struct {
+	Entries []VaultEntryViewAPI `json:"entries"`
+	Count   int                 `json:"count"`
+}
+
+// CreateVaultRequestAPI is the request body for creating a vault
+type CreateVaultRequestAPI struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// SetEntryRequestAPI is the request body for setting a vault entry
+type SetEntryRequestAPI struct {
+	Key      string `json:"key"`
+	Value    string `json:"value"`
+	IsSecret *bool  `json:"is_secret,omitempty"`
+}
+
+// ListVaultsAPI fetches all vaults from the server
+func (c *APIClient) ListVaultsAPI() ([]VaultSummaryAPI, error) {
+	data, err := c.GET("/api/vaults")
+	if err != nil {
+		return nil, err
+	}
+
+	var resp VaultsListResponseAPI
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return resp.Vaults, nil
+}
+
+// GetVaultAPI fetches a vault with its entries
+func (c *APIClient) GetVaultAPI(name string) (*VaultDetailAPI, error) {
+	data, err := c.GET("/api/vaults/" + name)
+	if err != nil {
+		return nil, err
+	}
+
+	var detail VaultDetailAPI
+	if err := json.Unmarshal(data, &detail); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &detail, nil
+}
+
+// CreateVaultAPI creates a new vault
+func (c *APIClient) CreateVaultAPI(name, description string) error {
+	req := CreateVaultRequestAPI{
+		Name:        name,
+		Description: description,
+	}
+
+	_, err := c.POST("/api/vaults", req)
+	return err
+}
+
+// DeleteVaultAPI deletes a vault
+func (c *APIClient) DeleteVaultAPI(name string) error {
+	_, err := c.DELETE("/api/vaults/" + name)
+	return err
+}
+
+// SetEntryAPI sets a vault entry
+func (c *APIClient) SetEntryAPI(vaultName, key, value string, isSecret *bool) error {
+	req := SetEntryRequestAPI{
+		Key:      key,
+		Value:    value,
+		IsSecret: isSecret,
+	}
+
+	_, err := c.POST("/api/vaults/"+vaultName+"/entries", req)
+	return err
+}
+
+// GetEntriesAPI fetches vault entries
+func (c *APIClient) GetEntriesAPI(vaultName string) ([]VaultEntryViewAPI, error) {
+	data, err := c.GET("/api/vaults/" + vaultName + "/entries")
+	if err != nil {
+		return nil, err
+	}
+
+	var resp VaultEntriesResponseAPI
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return resp.Entries, nil
+}
+
+// DeleteEntryAPI deletes a vault entry
+func (c *APIClient) DeleteEntryAPI(vaultName, key string) error {
+	_, err := c.DELETE("/api/vaults/" + vaultName + "/entries/" + key)
 	return err
 }
