@@ -597,6 +597,7 @@ func runConfigCreateRemote() error {
 					Mode:               config.Deployment.Mode,
 					EnvVars:            config.Deployment.EnvVars,
 					StartupTimeoutSecs: config.Deployment.StartupTimeoutSecs,
+					Vaults:             config.Deployment.Vaults,
 				}
 			}
 
@@ -738,6 +739,7 @@ func loadConfigsFromFile(filePath string) ([]*queueworker.QueueConfig, error) {
 			Mode:               simple.Deployment.Mode,
 			EnvVars:            simple.Deployment.EnvVars,
 			StartupTimeoutSecs: simple.Deployment.StartupTimeoutSecs,
+			Vaults:             simple.Deployment.Vaults,
 		}
 	}
 

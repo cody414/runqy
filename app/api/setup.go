@@ -1,11 +1,24 @@
 package api
 
 import (
+	"log"
+	"os"
+
 	"github.com/Publikey/runqy/config"
 	queueworker "github.com/Publikey/runqy/queues"
+	"github.com/Publikey/runqy/vaults"
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
+	"github.com/jmoiron/sqlx"
 )
+
+// Global vault store for use by worker handshake
+var globalVaultStore *vaults.Store
+
+// GetVaultStore returns the global vault store (for use by worker handshake)
+func GetVaultStore() *vaults.Store {
+	return globalVaultStore
+}
 
 func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg *config.Config, redisOpt asynq.RedisClientOpt) {
 	// Setup CLI API endpoints (queue/task management)
@@ -36,4 +49,36 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 	router_workers.POST("/queues", CreateQueueConfig(qwStore))
 	router_workers.DELETE("/queues/:queue_name", DeleteQueueConfig(qwStore))
 	router_workers.POST("/reload", ReloadQueueConfigs(qwStore, qwConfigDir))
+}
+
+// SetupVaultsAPI sets up the vaults API routes
+func SetupVaultsAPI(r *gin.Engine, db *sqlx.DB) {
+	vaultStore := vaults.NewStore(db)
+	globalVaultStore = vaultStore
+
+	// Check if vaults are enabled
+	if !vaultStore.IsEnabled() {
+		if os.Getenv(vaults.EnvMasterKey) == "" {
+			log.Println("[VAULTS] Warning: RUNQY_VAULT_MASTER_KEY not set, vaults feature disabled")
+		} else {
+			log.Println("[VAULTS] Warning: Invalid RUNQY_VAULT_MASTER_KEY, vaults feature disabled")
+		}
+	} else {
+		log.Println("[VAULTS] Vaults feature enabled")
+	}
+
+	// Vaults API - all routes require API key authentication
+	router_vaults := r.Group("/api/vaults")
+	router_vaults.Use(Authorize())
+
+	// Vault CRUD
+	router_vaults.GET("", ListVaults(vaultStore))
+	router_vaults.POST("", CreateVault(vaultStore))
+	router_vaults.GET("/:name", GetVault(vaultStore))
+	router_vaults.DELETE("/:name", DeleteVault(vaultStore))
+
+	// Vault entry CRUD
+	router_vaults.POST("/:name/entries", SetEntry(vaultStore))
+	router_vaults.GET("/:name/entries", ListEntries(vaultStore))
+	router_vaults.DELETE("/:name/entries/:key", DeleteEntry(vaultStore))
 }

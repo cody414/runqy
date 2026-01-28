@@ -208,6 +208,7 @@ func runServe(cmd *cobra.Command, args []string) {
 	}
 
 	api.SetupAPI(router, qwStore, cfg.QueueWorkersDir, cfg, redisAddr.AsynqOpt)
+	api.SetupVaultsAPI(router, db)
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.StaticFile("/swagger.yaml", "./docs/swagger.yaml")
