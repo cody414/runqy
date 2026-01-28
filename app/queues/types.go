@@ -41,6 +41,7 @@ type DeploymentYAML struct {
 	Mode               string            `yaml:"mode,omitempty"` // "long_running" or "one_shot"
 	EnvVars            map[string]string `yaml:"env_vars"`
 	StartupTimeoutSecs int               `yaml:"startup_timeout_secs"`
+	RedisStorage       *bool             `yaml:"redis_storage,omitempty"`
 }
 
 // QueueConfig is the runtime representation stored in DB and returned via API
@@ -62,6 +63,7 @@ type DeploymentConfig struct {
 	Mode               string            `json:"mode,omitempty"`
 	EnvVars            map[string]string `json:"env_vars"`
 	StartupTimeoutSecs int               `json:"startup_timeout_secs"`
+	RedisStorage       *bool             `json:"redis_storage,omitempty"`
 }
 
 // QueueSummary is a lightweight version for listing queues
