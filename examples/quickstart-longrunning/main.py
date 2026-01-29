@@ -7,7 +7,7 @@ This task demonstrates the long-running mode where:
 """
 
 import sys
-from runqy_task import task, load, run
+from runqy_python import task, load, run
 
 
 class SimpleProcessor:
