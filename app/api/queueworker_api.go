@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/Publikey/runqy/config"
 	queueworker "github.com/Publikey/runqy/queues"
+	"github.com/Publikey/runqy/vaults"
 	"github.com/gin-gonic/gin"
 )
 
@@ -44,14 +44,14 @@ type SubQueueConfig struct {
 
 // WorkerDeploymentConfig contains deployment info for the worker
 type WorkerDeploymentConfig struct {
-	GitURL             string            `json:"git_url"`
-	Branch             string            `json:"branch"`
-	CodePath           string            `json:"code_path,omitempty"`
-	StartupCmd         string            `json:"startup_cmd"`
-	Mode               string            `json:"mode,omitempty"`
-	EnvVars            map[string]string `json:"env_vars"`
-	StartupTimeoutSecs int               `json:"startup_timeout_secs"`
-	Vaults             []string          `json:"vaults,omitempty"`
+	GitURL             string   `json:"git_url"`
+	Branch             string   `json:"branch"`
+	CodePath           string   `json:"code_path,omitempty"`
+	StartupCmd         string   `json:"startup_cmd"`
+	Mode               string   `json:"mode,omitempty"`
+	StartupTimeoutSecs int      `json:"startup_timeout_secs"`
+	RedisStorage       bool     `json:"redis_storage"`
+	Vaults             []string `json:"vaults,omitempty"`
 }
 
 // WorkerConfigResponse is the full response for worker registration
@@ -60,7 +60,8 @@ type WorkerConfigResponse struct {
 	Queue      WorkerQueueConfig      `json:"queue"`
 	SubQueues  []SubQueueConfig       `json:"sub_queues"`
 	Deployment WorkerDeploymentConfig `json:"deployment"`
-	Vaults     map[string]string      `json:"vaults,omitempty"` // Decrypted vault key-value pairs
+	Vaults     map[string]string      `json:"vaults,omitempty"`    // Decrypted vault key-value pairs
+	GitToken   string                 `json:"git_token,omitempty"` // Resolved git token for authentication
 }
 
 // HandshakeErrorResponse is returned on handshake errors
@@ -68,23 +69,33 @@ type HandshakeErrorResponse struct {
 	Error string `json:"error"`
 }
 
-// resolveEnvVars resolves environment variable references in env_vars map.
-// Values prefixed with "env://" are replaced with the actual environment variable value.
-// For example, "env://SECRET_KEY" becomes the value of os.Getenv("SECRET_KEY").
-func resolveEnvVars(envVars map[string]string) map[string]string {
-	if envVars == nil {
-		return nil
+// resolveGitToken resolves a git_token vault reference.
+// Format: "vault://vault-name/key"
+// Returns the decrypted value from the vault entry.
+func resolveGitToken(ctx context.Context, tokenRef string, vaultStore *vaults.Store) (string, error) {
+	if tokenRef == "" {
+		return "", nil
 	}
 
-	resolved := make(map[string]string, len(envVars))
-	for key, value := range envVars {
-		if envName, found := strings.CutPrefix(value, "env://"); found {
-			resolved[key] = os.Getenv(envName)
-		} else {
-			resolved[key] = value
-		}
+	if !strings.HasPrefix(tokenRef, "vault://") {
+		return "", fmt.Errorf("git_token must use vault:// reference, got: %s", tokenRef)
 	}
-	return resolved
+
+	// Parse vault://vault-name/key
+	ref := strings.TrimPrefix(tokenRef, "vault://")
+	parts := strings.SplitN(ref, "/", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid vault reference format: %s (expected vault://vault-name/key)", tokenRef)
+	}
+
+	vaultName, key := parts[0], parts[1]
+
+	value, _, err := vaultStore.GetEntry(ctx, vaultName, key)
+	if err != nil {
+		return "", fmt.Errorf("failed to get vault entry %s/%s: %w", vaultName, key, err)
+	}
+
+	return value, nil
 }
 
 // QueuesListResponse is the response for listing all queues
@@ -193,19 +204,25 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 			}}
 		}
 
-		// Build deployment config with resolved environment variables
+		// Build deployment config
 		var deployment WorkerDeploymentConfig
+		var gitTokenRef string
 		if queueCfg.Deployment != nil {
+			redisStorage := false
+			if queueCfg.Deployment.RedisStorage != nil {
+				redisStorage = *queueCfg.Deployment.RedisStorage
+			}
 			deployment = WorkerDeploymentConfig{
 				GitURL:             queueCfg.Deployment.GitURL,
 				Branch:             queueCfg.Deployment.Branch,
 				CodePath:           queueCfg.Deployment.CodePath,
 				StartupCmd:         queueCfg.Deployment.StartupCmd,
 				Mode:               queueCfg.Deployment.Mode,
-				EnvVars:            resolveEnvVars(queueCfg.Deployment.EnvVars),
 				StartupTimeoutSecs: queueCfg.Deployment.StartupTimeoutSecs,
+				RedisStorage:       redisStorage,
 				Vaults:             queueCfg.Deployment.Vaults,
 			}
+			gitTokenRef = queueCfg.Deployment.GitToken
 		}
 
 		// Resolve vaults if configured
@@ -225,6 +242,23 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 			}
 		}
 
+		// Resolve git token if configured
+		var gitToken string
+		if gitTokenRef != "" {
+			vaultStore := GetVaultStore()
+			if vaultStore != nil && vaultStore.IsEnabled() {
+				token, err := resolveGitToken(c.Request.Context(), gitTokenRef, vaultStore)
+				if err != nil {
+					log.Printf("[VAULTS] Warning: failed to resolve git_token for queue %s: %v", queueName, err)
+				} else {
+					gitToken = token
+					log.Printf("[VAULTS] Resolved git_token for queue %s", queueName)
+				}
+			} else {
+				log.Printf("[VAULTS] Warning: git_token requested for queue %s but vaults feature is disabled", queueName)
+			}
+		}
+
 		// Return the full worker config response
 		c.JSON(http.StatusOK, WorkerConfigResponse{
 			Redis: WorkerRedisConfig{
@@ -239,6 +273,7 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 			SubQueues:  subQueues,
 			Deployment: deployment,
 			Vaults:     vaultData,
+			GitToken:   gitToken,
 		})
 	}
 }

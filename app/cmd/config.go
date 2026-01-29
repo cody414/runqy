@@ -595,9 +595,9 @@ func runConfigCreateRemote() error {
 					CodePath:           config.Deployment.CodePath,
 					StartupCmd:         config.Deployment.StartupCmd,
 					Mode:               config.Deployment.Mode,
-					EnvVars:            config.Deployment.EnvVars,
 					StartupTimeoutSecs: config.Deployment.StartupTimeoutSecs,
 					Vaults:             config.Deployment.Vaults,
+					GitToken:           config.Deployment.GitToken,
 				}
 			}
 
@@ -737,9 +737,9 @@ func loadConfigsFromFile(filePath string) ([]*queueworker.QueueConfig, error) {
 			CodePath:           simple.Deployment.CodePath,
 			StartupCmd:         simple.Deployment.StartupCmd,
 			Mode:               simple.Deployment.Mode,
-			EnvVars:            simple.Deployment.EnvVars,
 			StartupTimeoutSecs: simple.Deployment.StartupTimeoutSecs,
 			Vaults:             simple.Deployment.Vaults,
+			GitToken:           simple.Deployment.GitToken,
 		}
 	}
 
