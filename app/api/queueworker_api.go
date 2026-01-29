@@ -157,8 +157,8 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 
 		queueName := req.Queue
 
-		// Get all sub-queues for this queue (matching "queueName_*" pattern)
-		subQueueConfigs, err := store.ListByPrefix(c.Request.Context(), queueName+"_")
+		// Get all sub-queues for this queue (matching "queueName.*" pattern)
+		subQueueConfigs, err := store.ListByPrefix(c.Request.Context(), queueName+queueworker.SubQueueSeparator)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, HandshakeErrorResponse{
 				Error: "failed to retrieve sub-queue configurations",
@@ -181,8 +181,11 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 			// Use the first sub-queue config for deployment info
 			queueCfg = subQueueConfigs[0]
 		} else {
-			// No sub-queues found, try to get the exact queue name
-			queueCfg, err = store.Get(c.Request.Context(), queueName)
+			// No sub-queues found with prefix pattern
+			// If queue name doesn't have a sub-queue, try with .default suffix
+			normalizedName := queueworker.NormalizeQueueName(queueName)
+
+			queueCfg, err = store.Get(c.Request.Context(), normalizedName)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, HandshakeErrorResponse{
 					Error: "failed to retrieve configuration",
@@ -191,13 +194,20 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 			}
 
 			if queueCfg == nil {
-				c.JSON(http.StatusNotFound, HandshakeErrorResponse{
-					Error: fmt.Sprintf("queue '%s' not found", queueName),
-				})
+				// If normalized name was different, show helpful error
+				if normalizedName != queueName {
+					c.JSON(http.StatusNotFound, HandshakeErrorResponse{
+						Error: fmt.Sprintf("queue '%s' not found (also tried '%s')", queueName, normalizedName),
+					})
+				} else {
+					c.JSON(http.StatusNotFound, HandshakeErrorResponse{
+						Error: fmt.Sprintf("queue '%s' not found", queueName),
+					})
+				}
 				return
 			}
 
-			// Queue found by exact match - use its name directly as the sub-queue
+			// Queue found - use its name directly as the sub-queue
 			subQueues = []SubQueueConfig{{
 				Name:     queueCfg.Name,
 				Priority: queueCfg.Priority,

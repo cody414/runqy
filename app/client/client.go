@@ -7,6 +7,7 @@ import (
 	"time"
 
 	m "github.com/Publikey/runqy/models"
+	queueworker "github.com/Publikey/runqy/queues"
 	t "github.com/Publikey/runqy/tasks"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
@@ -14,6 +15,9 @@ import (
 
 // EnqueuePredictTask enqueues a task to the specified queue
 func EnqueuePredictTask(client *asynq.Client, rdb *redis.Client, queue string, timeout int64, payload m.Predict) (*asynq.TaskInfo, error) {
+	// Normalize queue name: if no sub-queue specified, append .default
+	queue = queueworker.NormalizeQueueName(queue)
+
 	payload.EnqueuedAt = time.Now().Unix()
 	payload.Status = "pending"
 
@@ -47,6 +51,9 @@ func EnqueuePredictTask(client *asynq.Client, rdb *redis.Client, queue string, t
 // EnqueueGenericTask enqueues a task. Payload may be json.RawMessage or any typed object
 // which will be marshaled to JSON here.
 func EnqueueGenericTask(client *asynq.Client, rdb *redis.Client, queue string, timeout int64, payload interface{}) (*asynq.TaskInfo, error) {
+	// Normalize queue name: if no sub-queue specified, append .default
+	queue = queueworker.NormalizeQueueName(queue)
+
 	var payloadBytes []byte
 	switch p := payload.(type) {
 	case json.RawMessage:

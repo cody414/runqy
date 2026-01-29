@@ -1,5 +1,62 @@
 package queueworker
 
+import (
+	"fmt"
+	"strings"
+)
+
+// Queue naming constants
+const (
+	// SubQueueSeparator is the character used to separate parent queue from sub-queue
+	// e.g., "inference.high" where "inference" is parent and "high" is sub-queue
+	SubQueueSeparator = "."
+
+	// DefaultSubQueueName is the default sub-queue name when none is specified
+	DefaultSubQueueName = "default"
+)
+
+// ValidateQueueName checks that a queue name does not contain the separator character.
+// This applies to both parent queue names and sub-queue names.
+func ValidateQueueName(name string) error {
+	if strings.Contains(name, SubQueueSeparator) {
+		return fmt.Errorf("queue name '%s' cannot contain '%s' (reserved as separator)", name, SubQueueSeparator)
+	}
+	return nil
+}
+
+// BuildFullQueueName combines a parent queue name and sub-queue name with the separator.
+// e.g., BuildFullQueueName("inference", "high") returns "inference.high"
+func BuildFullQueueName(parent, subQueue string) string {
+	return parent + SubQueueSeparator + subQueue
+}
+
+// ParseQueueName splits a full queue name into parent and sub-queue parts.
+// Returns (parent, subQueue, hasSubQueue).
+// e.g., ParseQueueName("inference.high") returns ("inference", "high", true)
+// e.g., ParseQueueName("simple") returns ("simple", "", false)
+func ParseQueueName(fullName string) (parent, subQueue string, hasSubQueue bool) {
+	if idx := strings.Index(fullName, SubQueueSeparator); idx > 0 {
+		return fullName[:idx], fullName[idx+1:], true
+	}
+	return fullName, "", false
+}
+
+// HasSubQueue checks if a queue name includes a sub-queue part.
+// e.g., "inference.high" returns true, "inference" returns false
+func HasSubQueue(name string) bool {
+	return strings.Contains(name, SubQueueSeparator)
+}
+
+// NormalizeQueueName ensures a queue name has a sub-queue part.
+// If the name doesn't contain a separator, appends ".default".
+// e.g., "inference" becomes "inference.default", "inference.high" stays unchanged
+func NormalizeQueueName(name string) string {
+	if !HasSubQueue(name) {
+		return BuildFullQueueName(name, DefaultSubQueueName)
+	}
+	return name
+}
+
 // QueueWorkersYAML is the root config structure
 type QueueWorkersYAML struct {
 	Queues map[string]QueueYAML `yaml:"queues"`
@@ -7,8 +64,8 @@ type QueueWorkersYAML struct {
 
 // QueueYAML represents a single queue configuration in YAML
 // Supports two formats:
-// 1. With sub_queues: creates multiple queues like "inference_high", "inference_low"
-// 2. Without sub_queues: uses priority field directly, creates "name_default"
+// 1. With sub_queues: creates multiple queues like "inference.high", "inference.low"
+// 2. Without sub_queues: uses priority field directly, creates "name.default"
 type QueueYAML struct {
 	Priority   int             `yaml:"priority,omitempty"`   // Used when no sub_queues defined
 	Provider   string          `yaml:"provider,omitempty"`   // "azure", "google", or empty for external workers

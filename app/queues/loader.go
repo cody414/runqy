@@ -89,6 +89,11 @@ func (c *QueueWorkersYAML) Validate() error {
 			return fmt.Errorf("queue name cannot be empty")
 		}
 
+		// Validate queue name doesn't contain separator
+		if err := ValidateQueueName(queueName); err != nil {
+			return err
+		}
+
 		// If no sub_queues, must have priority
 		if len(q.SubQueues) == 0 && q.Priority == 0 {
 			return fmt.Errorf("queue '%s': either priority or sub_queues is required", queueName)
@@ -98,6 +103,10 @@ func (c *QueueWorkersYAML) Validate() error {
 		for i, sq := range q.SubQueues {
 			if sq.Name == "" {
 				return fmt.Errorf("queue '%s': sub_queues[%d].name is required", queueName, i)
+			}
+			// Validate sub-queue name doesn't contain separator
+			if err := ValidateQueueName(sq.Name); err != nil {
+				return fmt.Errorf("queue '%s': sub_queues[%d]: %w", queueName, i, err)
 			}
 			if sq.Priority == 0 {
 				return fmt.Errorf("queue '%s': sub_queues[%d].priority is required", queueName, i)
@@ -121,8 +130,8 @@ func (c *QueueWorkersYAML) Validate() error {
 }
 
 // ToQueueConfigs converts a YAML queue config to runtime QueueConfig(s)
-// If sub_queues are defined, creates multiple configs like "inference_high", "inference_low"
-// If no sub_queues, creates a single config with name "queueName_default"
+// If sub_queues are defined, creates multiple configs like "inference.high", "inference.low"
+// If no sub_queues, creates a single config with name "queueName.default"
 func (q *QueueYAML) ToQueueConfigs(baseName string) []*QueueConfig {
 	var configs []*QueueConfig
 
@@ -146,7 +155,7 @@ func (q *QueueYAML) ToQueueConfigs(baseName string) []*QueueConfig {
 		// Create a config for each sub-queue
 		for _, sq := range q.SubQueues {
 			cfg := &QueueConfig{
-				Name:       fmt.Sprintf("%s_%s", baseName, sq.Name),
+				Name:       BuildFullQueueName(baseName, sq.Name),
 				Priority:   sq.Priority,
 				Provider:   q.Provider,
 				Deployment: deployment,
@@ -154,9 +163,9 @@ func (q *QueueYAML) ToQueueConfigs(baseName string) []*QueueConfig {
 			configs = append(configs, cfg)
 		}
 	} else {
-		// No sub-queues, create single config with _default suffix
+		// No sub-queues, create single config with .default suffix
 		cfg := &QueueConfig{
-			Name:       fmt.Sprintf("%s_default", baseName),
+			Name:       BuildFullQueueName(baseName, DefaultSubQueueName),
 			Priority:   q.Priority,
 			Provider:   q.Provider,
 			Deployment: deployment,
