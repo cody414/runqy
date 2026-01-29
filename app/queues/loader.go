@@ -135,10 +135,10 @@ func (q *QueueYAML) ToQueueConfigs(baseName string) []*QueueConfig {
 			CodePath:           q.Deployment.CodePath,
 			StartupCmd:         q.Deployment.StartupCmd,
 			Mode:               q.Deployment.Mode,
-			EnvVars:            q.Deployment.EnvVars,
 			StartupTimeoutSecs: q.Deployment.StartupTimeoutSecs,
 			RedisStorage:       q.Deployment.RedisStorage,
 			Vaults:             q.Deployment.Vaults,
+			GitToken:           q.Deployment.GitToken,
 		}
 	}
 

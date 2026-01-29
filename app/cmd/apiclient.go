@@ -307,14 +307,14 @@ type QueueConfigAPI struct {
 
 // DeploymentConfigAPI represents deployment configuration
 type DeploymentConfigAPI struct {
-	GitURL             string            `json:"git_url"`
-	Branch             string            `json:"branch"`
-	CodePath           string            `json:"code_path,omitempty"`
-	StartupCmd         string            `json:"startup_cmd"`
-	Mode               string            `json:"mode,omitempty"`
-	EnvVars            map[string]string `json:"env_vars,omitempty"`
-	StartupTimeoutSecs int               `json:"startup_timeout_secs,omitempty"`
-	Vaults             []string          `json:"vaults,omitempty"`
+	GitURL             string   `json:"git_url"`
+	Branch             string   `json:"branch"`
+	CodePath           string   `json:"code_path,omitempty"`
+	StartupCmd         string   `json:"startup_cmd"`
+	Mode               string   `json:"mode,omitempty"`
+	StartupTimeoutSecs int      `json:"startup_timeout_secs,omitempty"`
+	Vaults             []string `json:"vaults,omitempty"`
+	GitToken           string   `json:"git_token,omitempty"`
 }
 
 // ConfigListResponse is the response for listing configs
