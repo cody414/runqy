@@ -6,7 +6,7 @@ This task demonstrates the one-shot mode where:
 - A new process is spawned for each task
 """
 
-from runqy_task import task, run_once
+from runqy_python import task, run_once
 
 
 @task
