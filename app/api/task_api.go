@@ -119,6 +119,9 @@ func AddTask(qwConfigDir string) gin.HandlerFunc {
             return
         }
 
+        // Normalize queue name: if no sub-queue specified, append .default
+        queue = queueworker.NormalizeQueueName(queue)
+
         // Extract timeout (required)
         var timeout int64
         if timeoutRaw, ok := rawBody["timeout"]; ok {
@@ -182,9 +185,9 @@ func AddTask(qwConfigDir string) gin.HandlerFunc {
 				}
 			}
 
-			// If not found, try trimming a trailing _default
-			if matched == nil && strings.HasSuffix(query.Queue, "_default") {
-				base := strings.TrimSuffix(query.Queue, "_default")
+			// If not found, try trimming a trailing .default
+			if matched == nil && strings.HasSuffix(query.Queue, ".default") {
+				base := strings.TrimSuffix(query.Queue, ".default")
 				for _, y := range yamls {
 					if qcfg, ok := y.Queues[base]; ok {
 						matched = &qcfg
