@@ -7,16 +7,34 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// PostgreSQL schema
-const postgresSchemaSQL = `
-CREATE TABLE IF NOT EXISTS queue_workers_config (
+// PostgreSQL schema for queues (parent queues with deployment config)
+const postgresQueuesSchemaSQL = `
+CREATE TABLE IF NOT EXISTS queues (
     id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
-    priority INTEGER,
-    deployment JSONB
+    provider TEXT DEFAULT '',
+    deployment JSONB,
+    input_schema JSONB,
+    output_schema JSONB,
+    description TEXT DEFAULT '',
+    enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_queue_workers_config_name ON queue_workers_config(name);
+CREATE INDEX IF NOT EXISTS idx_queues_name ON queues(name);
+
+CREATE TABLE IF NOT EXISTS sub_queues (
+    id SERIAL PRIMARY KEY,
+    queue_id INTEGER NOT NULL REFERENCES queues(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    priority INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(queue_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sub_queues_queue_id ON sub_queues(queue_id);
 `
 
 // PostgreSQL schema for vaults
@@ -46,16 +64,34 @@ CREATE INDEX IF NOT EXISTS idx_vault_entries_vault_id ON vault_entries(vault_id)
 CREATE INDEX IF NOT EXISTS idx_vault_entries_key ON vault_entries(vault_id, key);
 `
 
-// SQLite schema (uses TEXT instead of JSONB, INTEGER PRIMARY KEY AUTOINCREMENT instead of SERIAL)
-const sqliteSchemaSQL = `
-CREATE TABLE IF NOT EXISTS queue_workers_config (
+// SQLite schema for queues (parent queues with deployment config)
+const sqliteQueuesSchemaSQL = `
+CREATE TABLE IF NOT EXISTS queues (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
-    priority INTEGER,
-    deployment TEXT
+    provider TEXT DEFAULT '',
+    deployment TEXT,
+    input_schema TEXT,
+    output_schema TEXT,
+    description TEXT DEFAULT '',
+    enabled INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_queue_workers_config_name ON queue_workers_config(name);
+CREATE INDEX IF NOT EXISTS idx_queues_name ON queues(name);
+
+CREATE TABLE IF NOT EXISTS sub_queues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    queue_id INTEGER NOT NULL REFERENCES queues(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    priority INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(queue_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sub_queues_queue_id ON sub_queues(queue_id);
 `
 
 // SQLite schema for vaults
@@ -88,19 +124,34 @@ CREATE INDEX IF NOT EXISTS idx_vault_entries_key ON vault_entries(vault_id, key)
 // EnsureSchema checks if required tables exist and creates them if they don't.
 // This is called at application startup to ensure the database is ready.
 func EnsureSchema(db *sqlx.DB) error {
-	exists, err := tableExists(db, "queue_workers_config")
+	// Check for old queue_workers_config table and migrate if needed
+	oldTableExists, err := tableExists(db, "queue_workers_config")
 	if err != nil {
-		return fmt.Errorf("failed to check table existence: %w", err)
+		return fmt.Errorf("failed to check old table existence: %w", err)
 	}
 
-	if exists {
-		log.Println("[SCHEMA] Table 'queue_workers_config' already exists")
-	} else {
-		log.Println("[SCHEMA] Creating table 'queue_workers_config'...")
-		if err := createSchema(db); err != nil {
-			return fmt.Errorf("failed to create schema: %w", err)
+	if oldTableExists {
+		log.Println("[SCHEMA] Found old 'queue_workers_config' table, dropping it...")
+		if _, err := db.Exec("DROP TABLE IF EXISTS queue_workers_config"); err != nil {
+			return fmt.Errorf("failed to drop old table: %w", err)
 		}
-		log.Println("[SCHEMA] Table 'queue_workers_config' created successfully")
+		log.Println("[SCHEMA] Old 'queue_workers_config' table dropped. Run 'runqy config reload' to re-populate from YAML files.")
+	}
+
+	// Check and create queues/sub_queues tables
+	queuesExist, err := tableExists(db, "queues")
+	if err != nil {
+		return fmt.Errorf("failed to check queues table existence: %w", err)
+	}
+
+	if queuesExist {
+		log.Println("[SCHEMA] Tables 'queues' and 'sub_queues' already exist")
+	} else {
+		log.Println("[SCHEMA] Creating tables 'queues' and 'sub_queues'...")
+		if err := createQueuesSchema(db); err != nil {
+			return fmt.Errorf("failed to create queues schema: %w", err)
+		}
+		log.Println("[SCHEMA] Tables 'queues' and 'sub_queues' created successfully")
 	}
 
 	// Check and create vault tables
@@ -150,15 +201,15 @@ func tableExists(db *sqlx.DB, tableName string) (bool, error) {
 	return exists, nil
 }
 
-// createSchema executes the schema creation SQL based on the database driver
-func createSchema(db *sqlx.DB) error {
+// createQueuesSchema creates the queues and sub_queues tables based on the database driver
+func createQueuesSchema(db *sqlx.DB) error {
 	driverName := db.DriverName()
 
 	var schemaSQL string
 	if driverName == "sqlite" {
-		schemaSQL = sqliteSchemaSQL
+		schemaSQL = sqliteQueuesSchemaSQL
 	} else {
-		schemaSQL = postgresSchemaSQL
+		schemaSQL = postgresQueuesSchemaSQL
 	}
 
 	_, err := db.Exec(schemaSQL)

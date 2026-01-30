@@ -517,18 +517,27 @@ func reloadFromYAML(ctx context.Context, store *queueworker.Store, dir string) (
 
 	for _, y := range yamls {
 		for queueName, queueCfg := range y.Queues {
-			// Convert to runtime configs (handles sub_queues)
-			configs := queueCfg.ToQueueConfigs(queueName)
+			// Convert to Queue and SubQueues (new two-table model)
+			queue, subQueues := queueCfg.ToQueueAndSubQueues(queueName)
 
-			for _, cfg := range configs {
-				// Save to DB
-				if err := store.Save(ctx, cfg); err != nil {
-					errors = append(errors, cfg.Name+": failed to save: "+err.Error())
+			// Save the parent queue
+			queueID, err := store.SaveQueue(ctx, queue)
+			if err != nil {
+				errors = append(errors, queueName+": failed to save queue: "+err.Error())
+				continue
+			}
+
+			// Save each sub-queue
+			for _, sq := range subQueues {
+				if err := store.SaveSubQueue(ctx, queueID, &sq); err != nil {
+					fullName := queueworker.BuildFullQueueName(queueName, sq.Name)
+					errors = append(errors, fullName+": failed to save sub-queue: "+err.Error())
 					continue
 				}
 
-				reloaded = append(reloaded, cfg.Name)
-				log.Printf("[QUEUEWORKER] Loaded: %s (provider=%s, priority=%d)", cfg.Name, cfg.Provider, cfg.Priority)
+				fullName := queueworker.BuildFullQueueName(queueName, sq.Name)
+				reloaded = append(reloaded, fullName)
+				log.Printf("[QUEUEWORKER] Loaded: %s (provider=%s, priority=%d)", fullName, queue.Provider, sq.Priority)
 			}
 		}
 	}
@@ -592,18 +601,27 @@ func reloadFromYAMLWithProviders(ctx context.Context, store *queueworker.Store, 
 				providerTypes = append(providerTypes, queueCfg.Provider)
 			}
 
-			// Convert to runtime configs (handles sub_queues)
-			configs := queueCfg.ToQueueConfigs(queueName)
+			// Convert to Queue and SubQueues (new two-table model)
+			queue, subQueues := queueCfg.ToQueueAndSubQueues(queueName)
 
-			for _, cfg := range configs {
-				// Save to DB
-				if err := store.Save(ctx, cfg); err != nil {
-					errors = append(errors, cfg.Name+": failed to save: "+err.Error())
+			// Save the parent queue
+			queueID, err := store.SaveQueue(ctx, queue)
+			if err != nil {
+				errors = append(errors, queueName+": failed to save queue: "+err.Error())
+				continue
+			}
+
+			// Save each sub-queue
+			for _, sq := range subQueues {
+				if err := store.SaveSubQueue(ctx, queueID, &sq); err != nil {
+					fullName := queueworker.BuildFullQueueName(queueName, sq.Name)
+					errors = append(errors, fullName+": failed to save sub-queue: "+err.Error())
 					continue
 				}
 
-				reloaded = append(reloaded, cfg.Name)
-				log.Printf("[QUEUEWORKER] Loaded: %s (provider=%s, priority=%d)", cfg.Name, cfg.Provider, cfg.Priority)
+				fullName := queueworker.BuildFullQueueName(queueName, sq.Name)
+				reloaded = append(reloaded, fullName)
+				log.Printf("[QUEUEWORKER] Loaded: %s (provider=%s, priority=%d)", fullName, queue.Provider, sq.Priority)
 			}
 		}
 	}
