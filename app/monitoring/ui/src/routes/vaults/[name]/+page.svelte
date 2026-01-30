@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { settings } from '$lib/stores/settings';
-	import { toast } from '$lib/stores/toast';
+	import { toaster } from '$lib/stores/toaster';
 	import { getVault, setVaultEntry, deleteVaultEntry, deleteVault } from '$lib/api/client';
 	import type { VaultDetail, VaultEntryView } from '$lib/api/types';
 	import EntryModal from '$lib/components/EntryModal.svelte';
@@ -73,11 +73,11 @@
 		try {
 			await setVaultEntry(vaultName, key, value, isSecret);
 			await loadData();
-			toast.success(entryModalMode === 'create' ? `Entry "${key}" added` : `Entry "${key}" updated`);
+			toaster.success({ title: entryModalMode === 'create' ? 'Entry Added' : 'Entry Updated', description: `Entry "${key}" ${entryModalMode === 'create' ? 'added' : 'updated'}` });
 			entryModalOpen = false;
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : 'Failed to save entry';
-			toast.error(errorMessage);
+			toaster.error({ title: 'Error', description: errorMessage });
 		} finally {
 			entryModalLoading = false;
 		}
@@ -92,10 +92,10 @@
 				try {
 					await deleteVaultEntry(vaultName, entry.key);
 					await loadData();
-					toast.success(`Entry "${entry.key}" deleted`);
+					toaster.success({ title: 'Entry Deleted', description: `Entry "${entry.key}" deleted` });
 				} catch (e) {
 					const errorMessage = e instanceof Error ? e.message : 'Failed to delete entry';
-					toast.error(errorMessage);
+					toaster.error({ title: 'Error', description: errorMessage });
 				}
 			}
 		};
@@ -109,11 +109,11 @@
 			action: async () => {
 				try {
 					await deleteVault(vaultName);
-					toast.success(`Vault "${vaultName}" deleted`);
+					toaster.success({ title: 'Vault Deleted', description: `Vault "${vaultName}" deleted` });
 					goto(`${base}/vaults`);
 				} catch (e) {
 					const errorMessage = e instanceof Error ? e.message : 'Failed to delete vault';
-					toast.error(errorMessage);
+					toaster.error({ title: 'Error', description: errorMessage });
 				}
 			}
 		};

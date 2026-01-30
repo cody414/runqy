@@ -4,7 +4,7 @@
 	import { base } from '$app/paths';
 	import { vaultsStore } from '$lib/stores/vaults';
 	import { settings } from '$lib/stores/settings';
-	import { toast } from '$lib/stores/toast';
+	import { toaster } from '$lib/stores/toaster';
 	import { createVault, deleteVault } from '$lib/api/client';
 	import VaultCard from '$lib/components/VaultCard.svelte';
 	import CreateVaultModal from '$lib/components/CreateVaultModal.svelte';
@@ -61,11 +61,11 @@
 		try {
 			await createVault(name, description);
 			await loadData();
-			toast.success(`Vault "${name}" created`);
+			toaster.success({ title: 'Vault Created', description: `Vault "${name}" created` });
 			createModalOpen = false;
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : 'Failed to create vault';
-			toast.error(errorMessage);
+			toaster.error({ title: 'Error', description: errorMessage });
 		} finally {
 			createLoading = false;
 		}
@@ -81,10 +81,10 @@
 				try {
 					await deleteVault(name);
 					await loadData();
-					toast.success(`Vault "${name}" deleted`);
+					toaster.success({ title: 'Vault Deleted', description: `Vault "${name}" deleted` });
 				} catch (e) {
 					const errorMessage = e instanceof Error ? e.message : 'Failed to delete vault';
-					toast.error(errorMessage);
+					toaster.error({ title: 'Error', description: errorMessage });
 				}
 			}
 		};

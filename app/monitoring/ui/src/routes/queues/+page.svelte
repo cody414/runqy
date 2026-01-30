@@ -5,7 +5,7 @@
 	import { queuesStore } from '$lib/stores/queues';
 	import { workersStore } from '$lib/stores/workers';
 	import { settings } from '$lib/stores/settings';
-	import { toast } from '$lib/stores/toast';
+	import { toaster } from '$lib/stores/toaster';
 	import { pauseQueue, resumeQueue, deleteQueue, createQueueConfig, getQueueConfig, updateQueueConfig } from '$lib/api/client';
 	import { formatNumber, formatBytes, formatDuration, truncateId } from '$lib/utils/format';
 	import { groupQueues, hasMultiQueueGroups, parseQueueName } from '$lib/utils/queueGrouping';
@@ -106,10 +106,10 @@
 		try {
 			await pauseQueue(qname);
 			await loadData();
-			toast.success(`Queue "${qname}" paused`);
+			toaster.success({ title: 'Queue Paused', description: `Queue "${qname}" paused` });
 		} catch (e) {
 			console.error('Failed to pause queue:', e);
-			toast.error(`Failed to pause queue "${qname}"`);
+			toaster.error({ title: 'Error', description: `Failed to pause queue "${qname}"` });
 		} finally {
 			actionLoading = null;
 		}
@@ -120,10 +120,10 @@
 		try {
 			await resumeQueue(qname);
 			await loadData();
-			toast.success(`Queue "${qname}" resumed`);
+			toaster.success({ title: 'Queue Resumed', description: `Queue "${qname}" resumed` });
 		} catch (e) {
 			console.error('Failed to resume queue:', e);
-			toast.error(`Failed to resume queue "${qname}"`);
+			toaster.error({ title: 'Error', description: `Failed to resume queue "${qname}"` });
 		} finally {
 			actionLoading = null;
 		}
@@ -140,10 +140,10 @@
 				try {
 					await deleteQueue(qname);
 					await loadData();
-					toast.success(`Queue "${qname}" deleted`);
+					toaster.success({ title: 'Queue Deleted', description: `Queue "${qname}" deleted` });
 				} catch (e) {
 					console.error('Failed to delete queue:', e);
-					toast.error(`Failed to delete queue "${qname}"`);
+					toaster.error({ title: 'Error', description: `Failed to delete queue "${qname}"` });
 				} finally {
 					actionLoading = null;
 				}
@@ -168,7 +168,7 @@
 			queueConfigModalMode = 'edit';
 			queueConfigModalOpen = true;
 		} catch (e) {
-			toast.error(`Failed to load queue config: ${e instanceof Error ? e.message : 'Unknown error'}`);
+			toaster.error({ title: 'Error', description: `Failed to load queue config: ${e instanceof Error ? e.message : 'Unknown error'}` });
 		}
 	}
 
@@ -199,23 +199,23 @@
 				}
 
 				if (failed > 0) {
-					toast.error(`Created ${succeeded} queue(s), ${failed} failed: ${errors[0]}`);
+					toaster.error({ title: 'Partial Failure', description: `Created ${succeeded} queue(s), ${failed} failed: ${errors[0]}` });
 				} else if (succeeded === 1) {
-					toast.success(`Queue "${queues[0].name}" created`);
+					toaster.success({ title: 'Queue Created', description: `Queue "${queues[0].name}" created` });
 				} else {
-					toast.success(`${succeeded} queues created`);
+					toaster.success({ title: 'Queues Created', description: `${succeeded} queues created` });
 				}
 			} else {
 				// Edit mode - single queue
 				const q = queues[0];
 				await updateQueueConfig(q.name, q.priority, q.provider || undefined, q.deployment || undefined);
-				toast.success(`Queue "${q.name}" updated`);
+				toaster.success({ title: 'Queue Updated', description: `Queue "${q.name}" updated` });
 			}
 			await loadData();
 			queueConfigModalOpen = false;
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : 'Failed to save queue config';
-			toast.error(errorMessage);
+			toaster.error({ title: 'Error', description: errorMessage });
 		} finally {
 			queueConfigModalLoading = false;
 		}
@@ -226,12 +226,12 @@
 		const fullName = `${parentQueue}.${subqueueName}`;
 		try {
 			await createQueueConfig(fullName, priority);
-			toast.success(`Subqueue "${fullName}" created`);
+			toaster.success({ title: 'Subqueue Created', description: `Subqueue "${fullName}" created` });
 			await loadData();
 			queueConfigModalOpen = false;
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : 'Failed to create subqueue';
-			toast.error(errorMessage);
+			toaster.error({ title: 'Error', description: errorMessage });
 		} finally {
 			queueConfigModalLoading = false;
 		}
