@@ -1,22 +1,15 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import type { RedisInfo } from '$lib/api/types';
-	import { getRedisInfo } from '$lib/api/client';
+	import type { RedisInfo, DatabaseInfo } from '$lib/api/types';
+	import { getRedisInfo, getDatabaseInfo } from '$lib/api/client';
 	import { settings } from '$lib/stores/settings';
 
 	let redisInfo = $state<RedisInfo | null>(null);
+	let dbInfo = $state<DatabaseInfo | null>(null);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let pollInterval: ReturnType<typeof setInterval> | null = null;
 	let refreshing = $state(false);
-
-	// Database info (placeholder - would need backend endpoint)
-	let dbInfo = $state({
-		type: 'PostgreSQL', // or SQLite
-		connected: true,
-		host: 'localhost',
-		database: 'runqy'
-	});
 
 	async function loadRedisInfo() {
 		try {
@@ -26,10 +19,19 @@
 		}
 	}
 
+	async function loadDatabaseInfo() {
+		try {
+			dbInfo = await getDatabaseInfo();
+		} catch (e) {
+			// Database info endpoint might not be available yet
+			console.warn('Failed to load database info:', e);
+		}
+	}
+
 	async function loadData() {
 		loading = true;
 		error = null;
-		await loadRedisInfo();
+		await Promise.all([loadRedisInfo(), loadDatabaseInfo()]);
 		loading = false;
 	}
 
@@ -148,30 +150,52 @@
 					</svg>
 					Database
 				</h3>
-				{#if dbInfo.connected}
+				{#if dbInfo?.connected}
 					<span class="badge preset-filled-success-500 text-xs">Connected</span>
-				{:else}
+				{:else if loading}
+					<span class="badge preset-filled-surface-500 text-xs">Checking...</span>
+				{:else if dbInfo}
 					<span class="badge preset-filled-error-500 text-xs">Disconnected</span>
+				{:else}
+					<span class="badge preset-filled-surface-500 text-xs">Info unavailable</span>
 				{/if}
 			</div>
-			<div class="space-y-3 text-sm">
-				<div class="flex justify-between">
-					<span class="text-surface-500">Type</span>
-					<span class="font-mono">{dbInfo.type}</span>
+			{#if loading && !dbInfo}
+				<div class="animate-pulse space-y-3">
+					{#each [1, 2, 3] as i (i)}
+						<div class="h-4 bg-surface-300 dark:bg-surface-600 rounded"></div>
+					{/each}
 				</div>
-				<div class="flex justify-between">
-					<span class="text-surface-500">Host</span>
-					<span class="font-mono">{dbInfo.host}</span>
+			{:else if dbInfo}
+				<div class="space-y-3 text-sm">
+					<div class="flex justify-between">
+						<span class="text-surface-500">Type</span>
+						<span class="font-mono">{dbInfo.type}</span>
+					</div>
+					{#if dbInfo.host}
+						<div class="flex justify-between">
+							<span class="text-surface-500">Host</span>
+							<span class="font-mono">{dbInfo.host}</span>
+						</div>
+					{/if}
+					{#if dbInfo.database}
+						<div class="flex justify-between">
+							<span class="text-surface-500">Database</span>
+							<span class="font-mono">{dbInfo.database}</span>
+						</div>
+					{/if}
+					{#if dbInfo.stats}
+						<div class="flex justify-between">
+							<span class="text-surface-500">Connections</span>
+							<span class="font-mono">{dbInfo.stats.open_connections} open ({dbInfo.stats.in_use} in use, {dbInfo.stats.idle} idle)</span>
+						</div>
+					{/if}
 				</div>
-				<div class="flex justify-between">
-					<span class="text-surface-500">Database</span>
-					<span class="font-mono">{dbInfo.database}</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-surface-500">Status</span>
-					<span class="text-success-500">Active</span>
-				</div>
-			</div>
+			{:else}
+				<p class="text-surface-500 text-sm">
+					Database information is not available.
+				</p>
+			{/if}
 		</div>
 	</div>
 

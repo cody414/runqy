@@ -5,8 +5,12 @@
 	import { workersStore, workerStats } from '$lib/stores/workers';
 	import { settings } from '$lib/stores/settings';
 	import QueueCard from '$lib/components/QueueCard.svelte';
+	import QueueGroupCard from '$lib/components/QueueGroupCard.svelte';
 	import StatCard from '$lib/components/StatCard.svelte';
+	import ThroughputChart from '$lib/components/charts/ThroughputChart.svelte';
+	import QueueSizesChart from '$lib/components/charts/QueueSizesChart.svelte';
 	import { formatRelativeTime, truncateId } from '$lib/utils/format';
+	import { groupQueues, hasMultiQueueGroups } from '$lib/utils/queueGrouping';
 
 	// Create a set of server IDs that have active workers (processing tasks)
 	let processingServerIds = $derived(
@@ -42,6 +46,11 @@
 
 	let pollInterval: ReturnType<typeof setInterval> | null = null;
 	let refreshing = $state(false);
+	let groupQueuesEnabled = $state(true);
+
+	// Grouped queues
+	let queueGroups = $derived(groupQueues($queuesStore.queues));
+	let showGroupToggle = $derived(hasMultiQueueGroups($queuesStore.queues));
 
 	async function loadData() {
 		await Promise.all([queuesStore.fetch(), workersStore.fetch()]);
@@ -107,6 +116,12 @@
 		<StatCard label="Workers" value={$workerStats.total} variant="primary" href="/workers" />
 	</div>
 
+	<!-- Charts Section -->
+	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+		<ThroughputChart height={280} />
+		<QueueSizesChart height={280} maxQueues={6} />
+	</div>
+
 	<!-- Error State -->
 	{#if $queuesStore.error}
 		<div class="card p-4 preset-outlined-error-500">
@@ -116,7 +131,26 @@
 
 	<!-- Queues Grid -->
 	<div>
-		<h2 class="text-lg font-semibold mb-4">Queues</h2>
+		<div class="flex items-center justify-between mb-4">
+			<h2 class="text-lg font-semibold">Queues</h2>
+			{#if showGroupToggle}
+				<button
+					type="button"
+					class="btn btn-sm {groupQueuesEnabled ? 'preset-filled-primary-500' : 'preset-outlined-surface-500'}"
+					onclick={() => groupQueuesEnabled = !groupQueuesEnabled}
+					title={groupQueuesEnabled ? 'Show individual queues' : 'Group sub-queues'}
+				>
+					<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						{#if groupQueuesEnabled}
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+						{:else}
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+						{/if}
+					</svg>
+					{groupQueuesEnabled ? 'Grouped' : 'Ungrouped'}
+				</button>
+			{/if}
+		</div>
 
 		{#if $queuesStore.loading && $queuesStore.queues.length === 0}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -146,6 +180,12 @@
 				<p class="text-surface-500">No queues found</p>
 				<p class="text-sm text-surface-400 mt-1">Queues will appear here when workers connect</p>
 			</div>
+		{:else if groupQueuesEnabled}
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+				{#each queueGroups as group (group.name)}
+					<QueueGroupCard {group} workers={$workersStore.workers} onQueueClick={navigateToQueue} />
+				{/each}
+			</div>
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each $queuesStore.queues as queue (queue.queue)}
@@ -157,7 +197,7 @@
 
 	<!-- Workers Overview -->
 	{#if $workersStore.workers.length > 0}
-		<div>
+		<div class="mt-8">
 			<div class="flex items-center justify-between mb-4">
 				<h2 class="text-lg font-semibold">Workers Overview</h2>
 				<a href="/workers" class="text-primary-500 hover:text-primary-600 text-sm font-medium">
@@ -232,6 +272,22 @@
 					</a>
 				</div>
 			{/if}
+		</div>
+	{:else}
+		<div class="mt-8">
+			<h2 class="text-lg font-semibold mb-4">Workers Overview</h2>
+			<div class="card p-8 text-center">
+				<svg class="w-12 h-12 mx-auto text-surface-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+					/>
+				</svg>
+				<p class="text-surface-500">No workers found</p>
+				<p class="text-sm text-surface-400 mt-1">Workers will appear here when they connect</p>
+			</div>
 		</div>
 	{/if}
 </div>

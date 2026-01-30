@@ -14,11 +14,15 @@ import (
 	"github.com/Publikey/runqy/models"
 	"github.com/Publikey/runqy/monitoring"
 	queueworker "github.com/Publikey/runqy/queues"
+	"github.com/Publikey/runqy/vaults"
 	"github.com/Publikey/runqy/watcher"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
+	"github.com/hibiken/asynq/x/metrics"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
 	swaggerFiles "github.com/swaggo/files"
@@ -136,14 +140,33 @@ func runServe(cmd *cobra.Command, args []string) {
 		c.Next()
 	})
 
-	h := monitoring.New(monitoring.Options{
-		RootPath:     "/monitoring",
-		RedisConnOpt: redisAddr.AsynqOpt,
-		ReadOnly:     os.Getenv("ASYNQ_READ_ONLY") == "true",
-	})
+	// Initialize vault store
+	vaultStore := vaults.NewStore(db)
+	if vaultStore.IsEnabled() {
+		log.Println("[VAULTS] Vaults feature enabled")
+	} else {
+		log.Println("[VAULTS] Warning: RUNQY_VAULT_MASTER_KEY not set, vaults feature disabled")
+	}
+
+	// Register asynq metrics exporter for Prometheus
+	inspector := asynq.NewInspector(redisAddr.AsynqOpt)
+	defer inspector.Close()
+	metricsExporter := metrics.NewQueueMetricsCollector(inspector)
+	prometheus.MustRegister(metricsExporter)
+	log.Println("[METRICS] Prometheus metrics exporter registered at /metrics")
 
 	// Initialize queue worker store (database for configs, Redis for asynq)
 	qwStore := queueworker.NewStore(db, redisAddr.RDB)
+
+	h := monitoring.New(monitoring.Options{
+		RootPath:          "/monitoring",
+		RedisConnOpt:      redisAddr.AsynqOpt,
+		ReadOnly:          os.Getenv("ASYNQ_READ_ONLY") == "true",
+		DB:                db,
+		VaultStore:        vaultStore,
+		QueueStore:        qwStore,
+		PrometheusAddress: os.Getenv("PROMETHEUS_ADDRESS"),
+	})
 
 	// Clean up stale workers from previous runs
 	ctx := context.Background()
@@ -208,10 +231,13 @@ func runServe(cmd *cobra.Command, args []string) {
 	}
 
 	api.SetupAPI(router, qwStore, cfg.QueueWorkersDir, cfg, redisAddr.AsynqOpt)
-	api.SetupVaultsAPI(router, db)
+	api.SetupVaultsAPI(router, vaultStore)
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.StaticFile("/swagger.yaml", "./docs/swagger.yaml")
+
+	// Prometheus metrics endpoint
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	router.Any("/monitoring/*a", gin.WrapH(h))
 

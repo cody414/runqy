@@ -1,15 +1,11 @@
 package api
 
 import (
-	"log"
-	"os"
-
 	"github.com/Publikey/runqy/config"
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/Publikey/runqy/vaults"
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
-	"github.com/jmoiron/sqlx"
 )
 
 // Global vault store for use by worker handshake
@@ -52,20 +48,8 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 }
 
 // SetupVaultsAPI sets up the vaults API routes
-func SetupVaultsAPI(r *gin.Engine, db *sqlx.DB) {
-	vaultStore := vaults.NewStore(db)
+func SetupVaultsAPI(r *gin.Engine, vaultStore *vaults.Store) {
 	globalVaultStore = vaultStore
-
-	// Check if vaults are enabled
-	if !vaultStore.IsEnabled() {
-		if os.Getenv(vaults.EnvMasterKey) == "" {
-			log.Println("[VAULTS] Warning: RUNQY_VAULT_MASTER_KEY not set, vaults feature disabled")
-		} else {
-			log.Println("[VAULTS] Warning: Invalid RUNQY_VAULT_MASTER_KEY, vaults feature disabled")
-		}
-	} else {
-		log.Println("[VAULTS] Vaults feature enabled")
-	}
 
 	// Vaults API - all routes require API key authentication
 	router_vaults := r.Group("/api/vaults")
