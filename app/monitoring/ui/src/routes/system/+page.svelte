@@ -85,7 +85,7 @@
 	<!-- Status Cards -->
 	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 		<!-- Redis Status -->
-		<div class="card p-6">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
 			<div class="flex items-center justify-between mb-4">
 				<h3 class="text-lg font-semibold flex items-center gap-2">
 					<svg class="w-5 h-5 text-error-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,7 +137,7 @@
 		</div>
 
 		<!-- Database Status -->
-		<div class="card p-6">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
 			<div class="flex items-center justify-between mb-4">
 				<h3 class="text-lg font-semibold flex items-center gap-2">
 					<svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,7 +201,7 @@
 
 	<!-- Memory Info -->
 	{#if redisInfo}
-		<div class="card p-6">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
 			<h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
 				<svg class="w-5 h-5 text-warning-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
@@ -235,7 +235,7 @@
 
 		<!-- Cluster Info (if enabled) -->
 		{#if redisInfo.cluster}
-			<div class="card p-6">
+			<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
 				<h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
 					<svg class="w-5 h-5 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -275,7 +275,7 @@
 		{/if}
 
 		<!-- Raw Info -->
-		<div class="card p-6">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
 			<details>
 				<summary class="cursor-pointer text-lg font-semibold">Raw Redis Info</summary>
 				<pre

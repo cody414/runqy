@@ -26,7 +26,7 @@
 	import TaskTable from '$lib/components/TaskTable.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 
-	$: qname = decodeURIComponent($page.params.qname);
+	let qname = $derived(decodeURIComponent($page.params.qname));
 
 	type TabState = 'active' | 'pending' | 'retry' | 'archived' | 'completed';
 	const tabs: { label: string; state: TabState }[] = [
@@ -37,27 +37,31 @@
 		{ label: 'Completed', state: 'completed' }
 	];
 
-	let activeTab: TabState = 'active';
-	let queueInfo: Awaited<ReturnType<typeof getQueueInfo>> | null = null;
-	let tasks: Task[] = [];
-	let taskCounts: Record<TabState, number> = {
+	let activeTab = $state<TabState>('active');
+	let queueInfo = $state<Awaited<ReturnType<typeof getQueueInfo>> | null>(null);
+	let tasks = $state<Task[]>([]);
+	let taskCounts = $state<Record<TabState, number>>({
 		active: 0,
 		pending: 0,
 		retry: 0,
 		archived: 0,
 		completed: 0
-	};
-	let loading = false;
-	let error: string | null = null;
-	let selectedIds = new Set<string>();
+	});
+	let loading = $state(false);
+	let error = $state<string | null>(null);
+	let selectedIds = $state(new Set<string>());
 	let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-	let confirmDialog = {
+	let confirmDialog = $state({
 		open: false,
 		title: '',
 		message: '',
 		action: () => {}
-	};
+	});
+
+	let canBulkRun = $derived(activeTab === 'retry' || activeTab === 'archived');
+	let canBulkArchive = $derived(activeTab === 'pending' || activeTab === 'retry');
+	let canBulkDelete = $derived(activeTab !== 'active');
 
 	async function loadQueueInfo() {
 		try {
@@ -114,10 +118,14 @@
 	});
 
 	// Reload tasks when tab changes
-	$: if (activeTab) {
-		loadTasks();
-		selectedIds = new Set();
-	}
+	let previousTab = $state<TabState | null>(null);
+	$effect(() => {
+		if (activeTab && activeTab !== previousTab) {
+			previousTab = activeTab;
+			loadTasks();
+			selectedIds = new Set();
+		}
+	});
 
 	async function handlePause() {
 		try {
@@ -137,25 +145,25 @@
 		}
 	}
 
-	function handleSelect(e: CustomEvent<{ id: string; selected: boolean }>) {
-		if (e.detail.selected) {
-			selectedIds.add(e.detail.id);
+	function handleSelect(detail: { id: string; selected: boolean }) {
+		if (detail.selected) {
+			selectedIds.add(detail.id);
 		} else {
-			selectedIds.delete(e.detail.id);
+			selectedIds.delete(detail.id);
 		}
-		selectedIds = selectedIds; // Trigger reactivity
+		selectedIds = new Set(selectedIds); // Trigger reactivity
 	}
 
-	function handleSelectAll(e: CustomEvent<{ selected: boolean }>) {
-		if (e.detail.selected) {
+	function handleSelectAll(detail: { selected: boolean }) {
+		if (detail.selected) {
 			selectedIds = new Set(tasks.map((t) => t.id));
 		} else {
 			selectedIds = new Set();
 		}
 	}
 
-	async function handleTaskAction(e: CustomEvent<{ action: string; taskId: string }>) {
-		const { action, taskId } = e.detail;
+	async function handleTaskAction(detail: { action: string; taskId: string }) {
+		const { action, taskId } = detail;
 		try {
 			switch (action) {
 				case 'cancel':
@@ -263,10 +271,6 @@
 			console.error('Failed to run all tasks:', e);
 		}
 	}
-
-	$: canBulkRun = activeTab === 'retry' || activeTab === 'archived';
-	$: canBulkArchive = activeTab === 'pending' || activeTab === 'retry';
-	$: canBulkDelete = activeTab !== 'active';
 </script>
 
 <svelte:head>
@@ -288,9 +292,9 @@
 				<h1 class="text-2xl font-bold">{qname}</h1>
 				{#if queueInfo}
 					{#if queueInfo.paused}
-						<span class="badge variant-filled-warning">Paused</span>
+						<span class="badge preset-filled-warning-500">Paused</span>
 					{:else}
-						<span class="badge variant-filled-success">Running</span>
+						<span class="badge preset-filled-success-500">Running</span>
 					{/if}
 				{/if}
 			</div>
@@ -307,7 +311,7 @@
 
 		<div class="flex items-center gap-2">
 			{#if queueInfo?.paused}
-				<button type="button" class="btn variant-filled-success" on:click={handleResume}>
+				<button type="button" class="btn preset-filled-success-500" onclick={handleResume}>
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
@@ -325,7 +329,7 @@
 					Resume
 				</button>
 			{:else}
-				<button type="button" class="btn variant-filled-warning" on:click={handlePause}>
+				<button type="button" class="btn preset-filled-warning-500" onclick={handlePause}>
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
@@ -337,7 +341,7 @@
 					Pause
 				</button>
 			{/if}
-			<button type="button" class="btn variant-ghost-surface" on:click={loadData}>
+			<button type="button" class="btn preset-outlined-surface-500" onclick={loadData}>
 				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
@@ -359,7 +363,7 @@
 				class="px-4 py-2 font-medium text-sm border-b-2 transition-colors {activeTab === tab.state
 					? 'border-primary-500 text-primary-500'
 					: 'border-transparent text-surface-500 hover:text-surface-900 dark:hover:text-surface-100'}"
-				on:click={() => (activeTab = tab.state)}
+				onclick={() => (activeTab = tab.state)}
 			>
 				{tab.label}
 				<span
@@ -384,8 +388,8 @@
 			{#if canBulkRun}
 				<button
 					type="button"
-					class="btn btn-sm variant-ghost-success"
-					on:click={selectedIds.size > 0 ? handleBulkRun : handleRunAll}
+					class="btn btn-sm preset-outlined-success-500"
+					onclick={selectedIds.size > 0 ? handleBulkRun : handleRunAll}
 				>
 					{selectedIds.size > 0 ? 'Run Selected' : 'Run All'}
 				</button>
@@ -394,8 +398,8 @@
 			{#if canBulkArchive}
 				<button
 					type="button"
-					class="btn btn-sm variant-ghost-surface"
-					on:click={selectedIds.size > 0 ? handleBulkArchive : handleArchiveAll}
+					class="btn btn-sm preset-outlined-surface-500"
+					onclick={selectedIds.size > 0 ? handleBulkArchive : handleArchiveAll}
 				>
 					{selectedIds.size > 0 ? 'Archive Selected' : 'Archive All'}
 				</button>
@@ -404,8 +408,8 @@
 			{#if canBulkDelete}
 				<button
 					type="button"
-					class="btn btn-sm variant-ghost-error"
-					on:click={selectedIds.size > 0 ? handleBulkDelete : handleDeleteAll}
+					class="btn btn-sm preset-outlined-error-500"
+					onclick={selectedIds.size > 0 ? handleBulkDelete : handleDeleteAll}
 				>
 					{selectedIds.size > 0 ? 'Delete Selected' : 'Delete All'}
 				</button>
@@ -415,7 +419,7 @@
 
 	<!-- Error State -->
 	{#if error}
-		<div class="card p-4 variant-ghost-error">
+		<div class="card preset-outlined-error-500 p-4">
 			<p class="text-error-500">{error}</p>
 		</div>
 	{/if}
@@ -426,9 +430,9 @@
 		state={activeTab}
 		{loading}
 		{selectedIds}
-		on:select={handleSelect}
-		on:selectAll={handleSelectAll}
-		on:action={handleTaskAction}
+		onselect={handleSelect}
+		onselectall={handleSelectAll}
+		onaction={handleTaskAction}
 	/>
 </div>
 
@@ -438,5 +442,5 @@
 	message={confirmDialog.message}
 	variant="danger"
 	confirmText="Delete"
-	on:confirm={confirmDialog.action}
+	onconfirm={confirmDialog.action}
 />

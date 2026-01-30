@@ -385,7 +385,7 @@
 		{#if viewMode === 'cards'}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each [1, 2, 3, 4, 5, 6] as i (i)}
-					<div class="card p-4">
+					<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4">
 						<div class="animate-pulse space-y-3">
 							<div class="h-6 bg-surface-300 dark:bg-surface-600 rounded w-1/2"></div>
 							<div class="grid grid-cols-3 gap-3">
@@ -413,7 +413,7 @@
 			</div>
 		{/if}
 	{:else if filteredQueues.length === 0}
-		<div class="card p-8 text-center">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-8 text-center">
 			<svg class="w-12 h-12 mx-auto text-surface-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path
 					stroke-linecap="round"

@@ -34,7 +34,7 @@
 
 	<div class="space-y-8">
 		<!-- Theme -->
-		<div class="card p-6">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
 			<h2 class="text-lg font-semibold mb-4">Appearance</h2>
 
 			<div class="space-y-4">
@@ -107,7 +107,7 @@
 		</div>
 
 		<!-- Polling -->
-		<div class="card p-6">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
 			<h2 class="text-lg font-semibold mb-4">Data Refresh</h2>
 
 			<div>
@@ -129,7 +129,7 @@
 		</div>
 
 		<!-- Sidebar -->
-		<div class="card p-6">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
 			<h2 class="text-lg font-semibold mb-4">Navigation</h2>
 
 			<div class="flex items-center justify-between">
@@ -152,7 +152,7 @@
 		</div>
 
 		<!-- Reset -->
-		<div class="card p-6">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
 			<h2 class="text-lg font-semibold mb-4">Reset</h2>
 			<p class="text-sm text-surface-500 mb-4">Reset all settings to their default values</p>
 			<button type="button" class="btn preset-outlined-error-500" onclick={() => settings.reset()}>

@@ -109,27 +109,27 @@
 
 	<!-- Stats -->
 	<div class="grid grid-cols-2 md:grid-cols-6 gap-4">
-		<div class="card p-4 text-center">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
 			<div class="text-3xl font-bold">{$workerStats.total}</div>
 			<div class="text-sm text-surface-500">Total Workers</div>
 		</div>
-		<div class="card p-4 text-center">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
 			<div class="text-3xl font-bold text-primary-500">{$workerStats.processing}</div>
 			<div class="text-sm text-surface-500">Processing</div>
 		</div>
-		<div class="card p-4 text-center">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
 			<div class="text-3xl font-bold text-success-500">{$workerStats.idle}</div>
 			<div class="text-sm text-surface-500">Idle</div>
 		</div>
-		<div class="card p-4 text-center">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
 			<div class="text-3xl font-bold text-secondary-500">{$workerStats.bootstrapping}</div>
 			<div class="text-sm text-surface-500">Bootstrapping</div>
 		</div>
-		<div class="card p-4 text-center">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
 			<div class="text-3xl font-bold text-warning-500">{$workerStats.stale}</div>
 			<div class="text-sm text-surface-500">Stale</div>
 		</div>
-		<div class="card p-4 text-center">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
 			<div class="text-3xl font-bold text-surface-500">{$workerStats.stopped}</div>
 			<div class="text-sm text-surface-500">Stopped</div>
 		</div>
@@ -228,7 +228,7 @@
 		{#if viewMode === 'cards'}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each [1, 2, 3] as i (i)}
-					<div class="card p-4">
+					<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4">
 						<div class="animate-pulse space-y-3">
 							<div class="h-5 bg-surface-300 dark:bg-surface-600 rounded w-2/3"></div>
 							<div class="h-4 bg-surface-300 dark:bg-surface-600 rounded w-1/2"></div>
@@ -253,7 +253,7 @@
 			</div>
 		{/if}
 	{:else if filteredWorkers.length === 0}
-		<div class="card p-8 text-center">
+		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-8 text-center">
 			<svg class="w-12 h-12 mx-auto text-surface-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path
 					stroke-linecap="round"

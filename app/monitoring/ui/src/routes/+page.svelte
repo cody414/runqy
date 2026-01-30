@@ -158,7 +158,7 @@
 		{#if $queuesStore.loading && $queuesStore.queues.length === 0}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each [1, 2, 3, 4, 5, 6] as i (i)}
-					<div class="card p-4">
+					<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4">
 						<div class="animate-pulse space-y-3">
 							<div class="h-6 bg-surface-300 dark:bg-surface-600 rounded w-1/2"></div>
 							<div class="grid grid-cols-3 gap-3">
@@ -171,7 +171,7 @@
 				{/each}
 			</div>
 		{:else if $queuesStore.queues.length === 0}
-			<div class="card p-8 text-center">
+			<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-8 text-center">
 				<svg class="w-12 h-12 mx-auto text-surface-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
@@ -210,23 +210,23 @@
 
 			<!-- Worker Stats -->
 			<div class="grid grid-cols-5 gap-4 mb-4">
-				<div class="card p-3 text-center">
+				<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-3 text-center">
 					<div class="text-2xl font-bold text-primary-500">{$workerStats.processing}</div>
 					<div class="text-xs text-surface-500">Processing</div>
 				</div>
-				<div class="card p-3 text-center">
+				<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-3 text-center">
 					<div class="text-2xl font-bold text-success-500">{$workerStats.idle}</div>
 					<div class="text-xs text-surface-500">Idle</div>
 				</div>
-				<div class="card p-3 text-center">
+				<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-3 text-center">
 					<div class="text-2xl font-bold text-secondary-500">{$workerStats.bootstrapping}</div>
 					<div class="text-xs text-surface-500">Bootstrapping</div>
 				</div>
-				<div class="card p-3 text-center">
+				<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-3 text-center">
 					<div class="text-2xl font-bold text-warning-500">{$workerStats.stale}</div>
 					<div class="text-xs text-surface-500">Stale</div>
 				</div>
-				<div class="card p-3 text-center">
+				<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-3 text-center">
 					<div class="text-2xl font-bold text-surface-500">{$workerStats.stopped}</div>
 					<div class="text-xs text-surface-500">Stopped</div>
 				</div>
@@ -293,7 +293,7 @@
 	{:else}
 		<div class="mt-8">
 			<h2 class="text-lg font-semibold mb-4">Workers Overview</h2>
-			<div class="card p-8 text-center">
+			<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-8 text-center">
 				<svg class="w-12 h-12 mx-auto text-surface-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
