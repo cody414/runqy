@@ -26,12 +26,14 @@
 		return processingServerIds.has(workerId);
 	}
 
-	// Get worker status: 'processing' | 'idle' | 'stale' | 'stopped'
+	// Get worker status: 'processing' | 'idle' | 'stale' | 'bootstrapping' | 'stopped'
 	function getWorkerStatus(worker: typeof $workersStore.workers[0]): string {
 		if (worker.is_stale) return 'stale';
-		if (worker.status !== 'running') return 'stopped';
-		if (isWorkerProcessing(worker.worker_id)) return 'processing';
-		return 'idle';
+		if (worker.status === 'bootstrapping') return 'bootstrapping';
+		if (worker.status === 'stopped') return 'stopped';
+		if (worker.status === 'running' && isWorkerProcessing(worker.worker_id)) return 'processing';
+		if (worker.status === 'running') return 'idle';
+		return 'stopped'; // fallback for unknown statuses
 	}
 
 	// Parse queues string like "map[queue1:5 queue2:5]" to array of {name, priority}
@@ -206,7 +208,7 @@
 			</div>
 
 			<!-- Worker Stats -->
-			<div class="grid grid-cols-4 gap-4 mb-4">
+			<div class="grid grid-cols-5 gap-4 mb-4">
 				<div class="card p-3 text-center">
 					<div class="text-2xl font-bold text-primary-500">{$workerStats.processing}</div>
 					<div class="text-xs text-surface-500">Processing</div>
@@ -214,6 +216,10 @@
 				<div class="card p-3 text-center">
 					<div class="text-2xl font-bold text-success-500">{$workerStats.idle}</div>
 					<div class="text-xs text-surface-500">Idle</div>
+				</div>
+				<div class="card p-3 text-center">
+					<div class="text-2xl font-bold text-secondary-500">{$workerStats.bootstrapping}</div>
+					<div class="text-xs text-surface-500">Bootstrapping</div>
 				</div>
 				<div class="card p-3 text-center">
 					<div class="text-2xl font-bold text-warning-500">{$workerStats.stale}</div>
@@ -245,6 +251,8 @@
 										<span class="badge preset-filled-primary-500 text-xs">Processing</span>
 									{:else if getWorkerStatus(worker) === 'idle'}
 										<span class="badge preset-filled-success-500 text-xs">Idle</span>
+									{:else if getWorkerStatus(worker) === 'bootstrapping'}
+										<span class="badge preset-filled-secondary-500 text-xs">Bootstrapping</span>
 									{:else if getWorkerStatus(worker) === 'stale'}
 										<span class="badge preset-filled-warning-500 text-xs">Stale</span>
 									{:else}
@@ -254,7 +262,15 @@
 								<td>
 									<div class="flex flex-wrap gap-1">
 										{#each parseQueues(worker.queues) as queue (queue.name)}
-											<span class="badge preset-outlined-primary-500 text-xs">{queue.name}</span>
+											<span class="badge preset-outlined-primary-500 text-xs">
+												{queue.name}
+												{#if queue.priority === 0 && getWorkerStatus(worker) === 'bootstrapping'}
+													<svg class="w-3 h-3 ml-1 animate-spin inline-block" fill="none" viewBox="0 0 24 24">
+														<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+														<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+													</svg>
+												{/if}
+											</span>
 										{/each}
 									</div>
 								</td>
