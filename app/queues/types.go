@@ -122,6 +122,7 @@ type SubQueue struct {
 	QueueID   int    `json:"queue_id" db:"queue_id"`
 	Name      string `json:"name" db:"name"` // Just "high", "low", "default"
 	Priority  int    `json:"priority" db:"priority"`
+	Enabled   bool   `json:"enabled" db:"enabled"`
 	CreatedAt int64  `json:"created_at" db:"created_at"`
 	UpdatedAt int64  `json:"updated_at" db:"updated_at"`
 }

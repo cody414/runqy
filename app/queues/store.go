@@ -32,6 +32,7 @@ type SubQueueRow struct {
 	QueueID   int            `db:"queue_id"`
 	Name      sql.NullString `db:"name"`
 	Priority  sql.NullInt64  `db:"priority"`
+	Enabled   sql.NullBool   `db:"enabled"`
 	CreatedAt sql.NullTime   `db:"created_at"`
 	UpdatedAt sql.NullTime   `db:"updated_at"`
 }
@@ -312,12 +313,12 @@ func (s *Store) rowToQueue(row *QueueRow) *Queue {
 	return queue
 }
 
-// ListSubQueues retrieves all sub-queues for a parent queue
+// ListSubQueues retrieves all enabled sub-queues for a parent queue
 func (s *Store) ListSubQueues(ctx context.Context, queueID int) ([]SubQueue, error) {
 	query := s.db.Rebind(`
-		SELECT id, queue_id, name, priority, created_at, updated_at
+		SELECT id, queue_id, name, priority, enabled, created_at, updated_at
 		FROM sub_queues
-		WHERE queue_id = ?
+		WHERE queue_id = ? AND enabled = true
 		ORDER BY priority DESC
 	`)
 
@@ -329,27 +330,36 @@ func (s *Store) ListSubQueues(ctx context.Context, queueID int) ([]SubQueue, err
 
 	subQueues := make([]SubQueue, 0, len(rows))
 	for _, row := range rows {
-		sq := SubQueue{
-			ID:       row.ID,
-			QueueID:  row.QueueID,
-			Priority: 1, // Default
-		}
-		if row.Name.Valid {
-			sq.Name = row.Name.String
-		}
-		if row.Priority.Valid {
-			sq.Priority = int(row.Priority.Int64)
-		}
-		if row.CreatedAt.Valid {
-			sq.CreatedAt = row.CreatedAt.Time.Unix()
-		}
-		if row.UpdatedAt.Valid {
-			sq.UpdatedAt = row.UpdatedAt.Time.Unix()
-		}
-		subQueues = append(subQueues, sq)
+		subQueues = append(subQueues, s.rowToSubQueue(&row))
 	}
 
 	return subQueues, nil
+}
+
+// rowToSubQueue converts a SubQueueRow to a SubQueue struct
+func (s *Store) rowToSubQueue(row *SubQueueRow) SubQueue {
+	sq := SubQueue{
+		ID:       row.ID,
+		QueueID:  row.QueueID,
+		Priority: 1,       // Default
+		Enabled:  true,    // Default
+	}
+	if row.Name.Valid {
+		sq.Name = row.Name.String
+	}
+	if row.Priority.Valid {
+		sq.Priority = int(row.Priority.Int64)
+	}
+	if row.Enabled.Valid {
+		sq.Enabled = row.Enabled.Bool
+	}
+	if row.CreatedAt.Valid {
+		sq.CreatedAt = row.CreatedAt.Time.Unix()
+	}
+	if row.UpdatedAt.Valid {
+		sq.UpdatedAt = row.UpdatedAt.Time.Unix()
+	}
+	return sq
 }
 
 // GetQueueWithSubQueues retrieves a parent queue with all its sub-queues
@@ -421,9 +431,9 @@ func (s *Store) Get(ctx context.Context, queueName string) (*QueueConfig, error)
 	}, nil
 }
 
-// ListParentQueues returns all parent queue names
+// ListParentQueues returns all enabled parent queue names
 func (s *Store) ListParentQueues(ctx context.Context) ([]string, error) {
-	query := `SELECT name FROM queues ORDER BY name`
+	query := `SELECT name FROM queues WHERE enabled = true ORDER BY name`
 
 	type nameRow struct {
 		Name string `db:"name"`
@@ -465,11 +475,13 @@ func (s *Store) ListAllQueuesWithSubQueues(ctx context.Context) ([]QueueWithSubQ
 
 // ListQueues returns all registered full queue names (parent.subqueue format)
 // This is for backward compatibility - returns names like "inference.high", "inference.low"
+// Only returns queues where both parent and sub-queue are enabled
 func (s *Store) ListQueues(ctx context.Context) ([]string, error) {
 	query := `
 		SELECT q.name as parent_name, sq.name as sub_name
 		FROM queues q
 		JOIN sub_queues sq ON sq.queue_id = q.id
+		WHERE q.enabled = true AND sq.enabled = true
 		ORDER BY q.name, sq.priority DESC
 	`
 
@@ -492,8 +504,91 @@ func (s *Store) ListQueues(ctx context.Context) ([]string, error) {
 	return queues, nil
 }
 
-// DeleteQueue removes a parent queue and all its sub-queues (via cascade)
+// DeleteQueue soft-deletes a parent queue by setting enabled=false
+// This also soft-deletes all sub-queues
 func (s *Store) DeleteQueue(ctx context.Context, queueName string) error {
+	return s.DisableQueue(ctx, queueName)
+}
+
+// DisableQueue sets enabled=false for a parent queue and all its sub-queues (soft-delete)
+func (s *Store) DisableQueue(ctx context.Context, queueName string) error {
+	driverName := s.db.DriverName()
+
+	// First, get the queue ID
+	queue, err := s.GetQueueIncludingDisabled(ctx, queueName)
+	if err != nil {
+		return err
+	}
+	if queue == nil {
+		return nil // Queue not found, nothing to delete
+	}
+
+	// Disable all sub-queues first
+	var subQuery string
+	if driverName == "sqlite" {
+		subQuery = `UPDATE sub_queues SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE queue_id = ?`
+	} else {
+		subQuery = s.db.Rebind(`UPDATE sub_queues SET enabled = false, updated_at = NOW() WHERE queue_id = ?`)
+	}
+	if _, err := s.db.ExecContext(ctx, subQuery, queue.ID); err != nil {
+		return fmt.Errorf("failed to disable sub-queues: %w", err)
+	}
+
+	// Then disable the parent queue
+	var queueQuery string
+	if driverName == "sqlite" {
+		queueQuery = `UPDATE queues SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+	} else {
+		queueQuery = s.db.Rebind(`UPDATE queues SET enabled = false, updated_at = NOW() WHERE id = ?`)
+	}
+	if _, err := s.db.ExecContext(ctx, queueQuery, queue.ID); err != nil {
+		return fmt.Errorf("failed to disable queue: %w", err)
+	}
+
+	return nil
+}
+
+// EnableQueue sets enabled=true for a parent queue and all its sub-queues (restore)
+func (s *Store) EnableQueue(ctx context.Context, queueName string) error {
+	driverName := s.db.DriverName()
+
+	// First, get the queue ID
+	queue, err := s.GetQueueIncludingDisabled(ctx, queueName)
+	if err != nil {
+		return err
+	}
+	if queue == nil {
+		return fmt.Errorf("queue '%s' not found", queueName)
+	}
+
+	// Enable the parent queue first
+	var queueQuery string
+	if driverName == "sqlite" {
+		queueQuery = `UPDATE queues SET enabled = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+	} else {
+		queueQuery = s.db.Rebind(`UPDATE queues SET enabled = true, updated_at = NOW() WHERE id = ?`)
+	}
+	if _, err := s.db.ExecContext(ctx, queueQuery, queue.ID); err != nil {
+		return fmt.Errorf("failed to enable queue: %w", err)
+	}
+
+	// Then enable all sub-queues
+	var subQuery string
+	if driverName == "sqlite" {
+		subQuery = `UPDATE sub_queues SET enabled = 1, updated_at = CURRENT_TIMESTAMP WHERE queue_id = ?`
+	} else {
+		subQuery = s.db.Rebind(`UPDATE sub_queues SET enabled = true, updated_at = NOW() WHERE queue_id = ?`)
+	}
+	if _, err := s.db.ExecContext(ctx, subQuery, queue.ID); err != nil {
+		return fmt.Errorf("failed to enable sub-queues: %w", err)
+	}
+
+	return nil
+}
+
+// HardDeleteQueue permanently removes a parent queue and all its sub-queues (via cascade)
+// Use this only when truly permanent deletion is needed
+func (s *Store) HardDeleteQueue(ctx context.Context, queueName string) error {
 	query := s.db.Rebind(`DELETE FROM queues WHERE name = ?`)
 	_, err := s.db.ExecContext(ctx, query, queueName)
 	if err != nil {
@@ -502,14 +597,89 @@ func (s *Store) DeleteQueue(ctx context.Context, queueName string) error {
 	return nil
 }
 
-// DeleteSubQueue removes a specific sub-queue
+// DeleteSubQueue soft-deletes a specific sub-queue by setting enabled=false
 func (s *Store) DeleteSubQueue(ctx context.Context, queueID int, subQueueName string) error {
-	query := s.db.Rebind(`DELETE FROM sub_queues WHERE queue_id = ? AND name = ?`)
+	return s.DisableSubQueue(ctx, queueID, subQueueName)
+}
+
+// DisableSubQueue sets enabled=false for a specific sub-queue (soft-delete)
+func (s *Store) DisableSubQueue(ctx context.Context, queueID int, subQueueName string) error {
+	driverName := s.db.DriverName()
+
+	var query string
+	if driverName == "sqlite" {
+		query = `UPDATE sub_queues SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE queue_id = ? AND name = ?`
+	} else {
+		query = s.db.Rebind(`UPDATE sub_queues SET enabled = false, updated_at = NOW() WHERE queue_id = ? AND name = ?`)
+	}
+
 	_, err := s.db.ExecContext(ctx, query, queueID, subQueueName)
 	if err != nil {
-		return fmt.Errorf("failed to delete sub-queue: %w", err)
+		return fmt.Errorf("failed to disable sub-queue: %w", err)
 	}
 	return nil
+}
+
+// EnableSubQueue sets enabled=true for a specific sub-queue (restore)
+func (s *Store) EnableSubQueue(ctx context.Context, queueID int, subQueueName string) error {
+	driverName := s.db.DriverName()
+
+	var query string
+	if driverName == "sqlite" {
+		query = `UPDATE sub_queues SET enabled = 1, updated_at = CURRENT_TIMESTAMP WHERE queue_id = ? AND name = ?`
+	} else {
+		query = s.db.Rebind(`UPDATE sub_queues SET enabled = true, updated_at = NOW() WHERE queue_id = ? AND name = ?`)
+	}
+
+	_, err := s.db.ExecContext(ctx, query, queueID, subQueueName)
+	if err != nil {
+		return fmt.Errorf("failed to enable sub-queue: %w", err)
+	}
+	return nil
+}
+
+// ListDisabledSubQueues retrieves all disabled (soft-deleted) sub-queues for a parent queue
+func (s *Store) ListDisabledSubQueues(ctx context.Context, queueID int) ([]SubQueue, error) {
+	query := s.db.Rebind(`
+		SELECT id, queue_id, name, priority, enabled, created_at, updated_at
+		FROM sub_queues
+		WHERE queue_id = ? AND enabled = false
+		ORDER BY name
+	`)
+
+	var rows []SubQueueRow
+	err := s.db.SelectContext(ctx, &rows, query, queueID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list disabled sub-queues: %w", err)
+	}
+
+	subQueues := make([]SubQueue, 0, len(rows))
+	for _, row := range rows {
+		subQueues = append(subQueues, s.rowToSubQueue(&row))
+	}
+
+	return subQueues, nil
+}
+
+// GetSubQueue retrieves a specific sub-queue by queue ID and name (regardless of enabled status)
+func (s *Store) GetSubQueue(ctx context.Context, queueID int, subQueueName string) (*SubQueue, error) {
+	query := s.db.Rebind(`
+		SELECT id, queue_id, name, priority, enabled, created_at, updated_at
+		FROM sub_queues
+		WHERE queue_id = ? AND name = ?
+	`)
+
+	var row SubQueueRow
+	err := s.db.GetContext(ctx, &row, query, queueID, subQueueName)
+	if err == sql.ErrNoRows {
+		return nil, nil // Not found
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sub-queue: %w", err)
+	}
+
+	sq := s.rowToSubQueue(&row)
+	return &sq, nil
 }
 
 // Delete removes a queue configuration from the database (backward compatibility)
@@ -570,9 +740,9 @@ func (s *Store) ListByPrefix(ctx context.Context, prefix string) ([]*QueueConfig
 	return configs, nil
 }
 
-// QueueExists checks if a parent queue exists
+// QueueExists checks if an enabled parent queue exists
 func (s *Store) QueueExists(ctx context.Context, queueName string) (bool, error) {
-	query := s.db.Rebind(`SELECT EXISTS(SELECT 1 FROM queues WHERE name = ?)`)
+	query := s.db.Rebind(`SELECT EXISTS(SELECT 1 FROM queues WHERE name = ? AND enabled = true)`)
 
 	var exists bool
 	err := s.db.GetContext(ctx, &exists, query, queueName)
@@ -582,9 +752,9 @@ func (s *Store) QueueExists(ctx context.Context, queueName string) (bool, error)
 	return exists, nil
 }
 
-// SubQueueExists checks if a sub-queue exists
+// SubQueueExists checks if an enabled sub-queue exists
 func (s *Store) SubQueueExists(ctx context.Context, queueID int, subQueueName string) (bool, error) {
-	query := s.db.Rebind(`SELECT EXISTS(SELECT 1 FROM sub_queues WHERE queue_id = ? AND name = ?)`)
+	query := s.db.Rebind(`SELECT EXISTS(SELECT 1 FROM sub_queues WHERE queue_id = ? AND name = ? AND enabled = true)`)
 
 	var exists bool
 	err := s.db.GetContext(ctx, &exists, query, queueID, subQueueName)
@@ -592,6 +762,68 @@ func (s *Store) SubQueueExists(ctx context.Context, queueID int, subQueueName st
 		return false, fmt.Errorf("failed to check sub-queue existence: %w", err)
 	}
 	return exists, nil
+}
+
+// DisabledSubQueueExists checks if a disabled (soft-deleted) sub-queue exists
+func (s *Store) DisabledSubQueueExists(ctx context.Context, queueID int, subQueueName string) (bool, error) {
+	query := s.db.Rebind(`SELECT EXISTS(SELECT 1 FROM sub_queues WHERE queue_id = ? AND name = ? AND enabled = false)`)
+
+	var exists bool
+	err := s.db.GetContext(ctx, &exists, query, queueID, subQueueName)
+	if err != nil {
+		return false, fmt.Errorf("failed to check disabled sub-queue existence: %w", err)
+	}
+	return exists, nil
+}
+
+// RestoreSubQueue restores a soft-deleted sub-queue by setting enabled=true
+// Returns error if the sub-queue doesn't exist or is already enabled
+func (s *Store) RestoreSubQueue(ctx context.Context, queueName string) error {
+	parent, subQueueName, hasSubQueue := ParseQueueName(queueName)
+	if !hasSubQueue {
+		subQueueName = DefaultSubQueueName
+	}
+
+	// Get the parent queue (regardless of enabled status)
+	queue, err := s.GetQueueIncludingDisabled(ctx, parent)
+	if err != nil {
+		return err
+	}
+	if queue == nil {
+		return fmt.Errorf("parent queue '%s' not found", parent)
+	}
+
+	// Check if the sub-queue is disabled
+	disabled, err := s.DisabledSubQueueExists(ctx, queue.ID, subQueueName)
+	if err != nil {
+		return err
+	}
+	if !disabled {
+		return fmt.Errorf("sub-queue '%s' is not disabled or does not exist", queueName)
+	}
+
+	// Re-enable the sub-queue
+	return s.EnableSubQueue(ctx, queue.ID, subQueueName)
+}
+
+// GetQueueIncludingDisabled retrieves a parent queue by name regardless of enabled status
+func (s *Store) GetQueueIncludingDisabled(ctx context.Context, queueName string) (*Queue, error) {
+	query := s.db.Rebind(`
+		SELECT id, name, provider, deployment, input_schema, output_schema, description, enabled, created_at, updated_at
+		FROM queues
+		WHERE name = ?
+	`)
+
+	var row QueueRow
+	err := s.db.GetContext(ctx, &row, query, queueName)
+	if err == sql.ErrNoRows {
+		return nil, nil // Not found
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get queue: %w", err)
+	}
+
+	return s.rowToQueue(&row), nil
 }
 
 // Exists checks if a queue configuration exists (backward compatibility)

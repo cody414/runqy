@@ -239,6 +239,11 @@ func runServe(cmd *cobra.Command, args []string) {
 	// Prometheus metrics endpoint
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
+	// Redirect root to monitoring dashboard
+	router.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/monitoring")
+	})
+
 	router.Any("/monitoring/*a", gin.WrapH(h))
 
 	// Create HTTP server

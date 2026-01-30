@@ -135,9 +135,10 @@ func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspecto
 	// Queue endpoints.
 	api.HandleFunc("/queues", newListQueuesHandlerFunc(inspector)).Methods("GET")
 	api.HandleFunc("/queues/{qname}", newGetQueueHandlerFunc(inspector)).Methods("GET")
-	api.HandleFunc("/queues/{qname}", newDeleteQueueHandlerFunc(inspector)).Methods("DELETE")
+	api.HandleFunc("/queues/{qname}", newDeleteQueueHandlerFunc(inspector, opts.QueueStore)).Methods("DELETE")
 	api.HandleFunc("/queues/{qname}:pause", newPauseQueueHandlerFunc(inspector)).Methods("POST")
 	api.HandleFunc("/queues/{qname}:resume", newResumeQueueHandlerFunc(inspector)).Methods("POST")
+	api.HandleFunc("/queues/{qname}:restore", newRestoreQueueHandlerFunc(opts.QueueStore)).Methods("POST")
 
 	// Queue Historical Stats endpoint.
 	api.HandleFunc("/queue_stats", newListQueueStatsHandlerFunc(inspector)).Methods("GET")
@@ -248,6 +249,7 @@ func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspecto
 		api.HandleFunc("/queue_configs/{name}", newGetQueueConfigHandlerFunc(opts.QueueStore)).Methods("GET")
 		api.HandleFunc("/queue_configs/{name}", newUpdateQueueConfigHandlerFunc(opts.QueueStore)).Methods("PUT")
 		api.HandleFunc("/queue_configs/{name}", newDeleteQueueConfigHandlerFunc(opts.QueueStore)).Methods("DELETE")
+		api.HandleFunc("/queue_configs/{name}:restore", newRestoreQueueConfigHandlerFunc(opts.QueueStore)).Methods("POST")
 	}
 
 	// Time series metrics endpoints.

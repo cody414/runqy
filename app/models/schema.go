@@ -29,12 +29,14 @@ CREATE TABLE IF NOT EXISTS sub_queues (
     queue_id INTEGER NOT NULL REFERENCES queues(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     priority INTEGER NOT NULL DEFAULT 1,
+    enabled BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(queue_id, name)
 );
 
 CREATE INDEX IF NOT EXISTS idx_sub_queues_queue_id ON sub_queues(queue_id);
+CREATE INDEX IF NOT EXISTS idx_sub_queues_enabled ON sub_queues(enabled);
 `
 
 // PostgreSQL schema for vaults
@@ -86,12 +88,14 @@ CREATE TABLE IF NOT EXISTS sub_queues (
     queue_id INTEGER NOT NULL REFERENCES queues(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     priority INTEGER NOT NULL DEFAULT 1,
+    enabled INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(queue_id, name)
 );
 
 CREATE INDEX IF NOT EXISTS idx_sub_queues_queue_id ON sub_queues(queue_id);
+CREATE INDEX IF NOT EXISTS idx_sub_queues_enabled ON sub_queues(enabled);
 `
 
 // SQLite schema for vaults
@@ -146,6 +150,10 @@ func EnsureSchema(db *sqlx.DB) error {
 
 	if queuesExist {
 		log.Println("[SCHEMA] Tables 'queues' and 'sub_queues' already exist")
+		// Run migrations for existing tables
+		if err := migrateSubQueuesEnabled(db); err != nil {
+			return fmt.Errorf("failed to migrate sub_queues enabled column: %w", err)
+		}
 	} else {
 		log.Println("[SCHEMA] Creating tables 'queues' and 'sub_queues'...")
 		if err := createQueuesSchema(db); err != nil {
@@ -229,4 +237,59 @@ func createVaultsSchema(db *sqlx.DB) error {
 
 	_, err := db.Exec(schemaSQL)
 	return err
+}
+
+// migrateSubQueuesEnabled adds the 'enabled' column to sub_queues if it doesn't exist
+func migrateSubQueuesEnabled(db *sqlx.DB) error {
+	driverName := db.DriverName()
+
+	// Check if column exists
+	var hasColumn bool
+	if driverName == "sqlite" {
+		// SQLite: check pragma table_info
+		var count int
+		err := db.Get(&count, `SELECT COUNT(*) FROM pragma_table_info('sub_queues') WHERE name = 'enabled'`)
+		if err != nil {
+			return fmt.Errorf("failed to check for enabled column: %w", err)
+		}
+		hasColumn = count > 0
+	} else {
+		// PostgreSQL: check information_schema
+		err := db.Get(&hasColumn, `
+			SELECT EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_name = 'sub_queues' AND column_name = 'enabled'
+			)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to check for enabled column: %w", err)
+		}
+	}
+
+	if hasColumn {
+		return nil // Column already exists
+	}
+
+	log.Println("[SCHEMA] Adding 'enabled' column to sub_queues table...")
+
+	if driverName == "sqlite" {
+		// SQLite migration
+		if _, err := db.Exec(`ALTER TABLE sub_queues ADD COLUMN enabled INTEGER DEFAULT 1`); err != nil {
+			return fmt.Errorf("failed to add enabled column: %w", err)
+		}
+		if _, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_sub_queues_enabled ON sub_queues(enabled)`); err != nil {
+			return fmt.Errorf("failed to create enabled index: %w", err)
+		}
+	} else {
+		// PostgreSQL migration
+		if _, err := db.Exec(`ALTER TABLE sub_queues ADD COLUMN enabled BOOLEAN DEFAULT TRUE`); err != nil {
+			return fmt.Errorf("failed to add enabled column: %w", err)
+		}
+		if _, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_sub_queues_enabled ON sub_queues(enabled)`); err != nil {
+			return fmt.Errorf("failed to create enabled index: %w", err)
+		}
+	}
+
+	log.Println("[SCHEMA] Added 'enabled' column to sub_queues table")
+	return nil
 }

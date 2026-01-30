@@ -60,12 +60,18 @@ func SetupCLIAPI(r *gin.Engine, inspector *asynq.Inspector, store *queueworker.S
 	api.GET("/queues/:queue", getQueueHandler(inspector))
 	api.POST("/queues/:queue/pause", pauseQueueHandler(inspector))
 	api.POST("/queues/:queue/unpause", unpauseQueueHandler(inspector))
+	api.DELETE("/queues/:queue", deleteQueueHandler(inspector, store))
 
 	// Task endpoints
 	api.GET("/queues/:queue/tasks", listTasksHandler(inspector))
 	api.GET("/queues/:queue/tasks/:task_id", getTaskHandler(inspector))
 	api.DELETE("/queues/:queue/tasks/:task_id", deleteTaskHandler(inspector))
 	api.POST("/tasks/:task_id/cancel", cancelTaskHandler(inspector))
+
+	// Additional endpoints for UI compatibility
+	api.GET("/queue_stats", queueStatsHandler(inspector))
+	api.GET("/workers", workersHandler(store))
+	api.GET("/servers", serversHandler(inspector))
 }
 
 func listQueuesHandler(inspector *asynq.Inspector, store *queueworker.Store) gin.HandlerFunc {
@@ -356,5 +362,56 @@ func cancelTaskHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "task cancelled", "task_id": taskID})
+	}
+}
+
+func deleteQueueHandler(inspector *asynq.Inspector, store *queueworker.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		queueName := c.Param("queue")
+		force := c.Query("force") == "true"
+
+		// Delete from Redis (asynq queue data)
+		if err := inspector.DeleteQueue(queueName, force); err != nil {
+			// Ignore "queue not found" in Redis - it might only exist in DB
+			if err != asynq.ErrQueueNotFound {
+				if err == asynq.ErrQueueNotEmpty {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "queue is not empty - use force=true to delete anyway"})
+					return
+				}
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		}
+
+		// Delete from database (queue configuration)
+		if store != nil {
+			if err := store.Delete(c.Request.Context(), queueName); err != nil {
+				// Log but don't fail - Redis deletion already succeeded
+				log.Printf("Warning: failed to delete queue config from database: %v", err)
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "queue deleted", "queue": queueName})
+	}
+}
+
+func queueStatsHandler(inspector *asynq.Inspector) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Return empty stats - use /monitoring/api/queue_stats for full data
+		c.JSON(http.StatusOK, gin.H{"stats": []interface{}{}})
+	}
+}
+
+func workersHandler(_ *queueworker.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Return empty workers - use /monitoring/api/workers for full data
+		c.JSON(http.StatusOK, gin.H{"workers": []interface{}{}})
+	}
+}
+
+func serversHandler(_ *asynq.Inspector) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Return empty servers - use /monitoring/api/servers for full data
+		c.JSON(http.StatusOK, gin.H{"servers": []interface{}{}})
 	}
 }

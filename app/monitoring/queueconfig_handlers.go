@@ -265,7 +265,7 @@ func newDeleteQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 			return
 		}
 
-		// Delete the queue
+		// Delete the queue (soft-delete)
 		if err := store.Delete(ctx, name); err != nil {
 			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
@@ -276,11 +276,64 @@ func newDeleteQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 			log.Printf("Warning: failed to unregister queue from asynq: %v", err)
 		}
 
-		log.Printf("[QUEUE-CONFIG] Deleted: %s", name)
+		log.Printf("[QUEUE-CONFIG] Deleted (soft): %s", name)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"message": fmt.Sprintf("Queue '%s' deleted successfully", name),
+		})
+	}
+}
+
+func newRestoreQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		name := vars["name"]
+
+		ctx := r.Context()
+
+		// Parse the queue name
+		parent, _, hasSubQueue := queueworker.ParseQueueName(name)
+
+		if hasSubQueue {
+			// Restore a specific sub-queue
+			if err := store.RestoreSubQueue(ctx, name); err != nil {
+				http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+				return
+			}
+			// Re-register in asynq
+			if err := store.RegisterAsynqQueues(ctx, []string{name}); err != nil {
+				log.Printf("Warning: failed to register queue in asynq: %v", err)
+			}
+		} else {
+			// Restore the entire parent queue
+			if err := store.EnableQueue(ctx, parent); err != nil {
+				http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+				return
+			}
+			// Re-register all sub-queues in asynq
+			queues, err := store.ListQueues(ctx)
+			if err == nil {
+				var matchingQueues []string
+				for _, q := range queues {
+					p, _, _ := queueworker.ParseQueueName(q)
+					if p == parent {
+						matchingQueues = append(matchingQueues, q)
+					}
+				}
+				if len(matchingQueues) > 0 {
+					if err := store.RegisterAsynqQueues(ctx, matchingQueues); err != nil {
+						log.Printf("Warning: failed to register queues in asynq: %v", err)
+					}
+				}
+			}
+		}
+
+		log.Printf("[QUEUE-CONFIG] Restored: %s", name)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": fmt.Sprintf("Queue '%s' restored successfully", name),
 		})
 	}
 }

@@ -432,9 +432,9 @@ func CreateQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 	}
 }
 
-// DeleteQueueConfig deletes a queue configuration
+// DeleteQueueConfig deletes a queue configuration (soft-delete)
 // @Summary Delete a queue configuration
-// @Description Delete a queue configuration by name
+// @Description Delete a queue configuration by name (soft-delete)
 // @Tags workers
 // @Produce json
 // @Param queue_name path string true "Queue name"
@@ -464,7 +464,7 @@ func DeleteQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 			return
 		}
 
-		// Delete the queue
+		// Delete the queue (soft-delete)
 		if err := store.Delete(ctx, queueName); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -477,6 +477,71 @@ func DeleteQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"message": fmt.Sprintf("Queue '%s' deleted successfully", queueName),
+		})
+	}
+}
+
+// RestoreQueueConfig restores a soft-deleted queue configuration
+// @Summary Restore a queue configuration
+// @Description Restore a soft-deleted queue configuration by name
+// @Tags workers
+// @Produce json
+// @Param queue_name path string true "Queue name"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /workers/queues/{queue_name}/restore [post]
+func RestoreQueueConfig(store *queueworker.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		queueName := c.Param("queue_name")
+		if queueName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "queue name is required"})
+			return
+		}
+
+		ctx := c.Request.Context()
+
+		// Parse the queue name
+		parent, _, hasSubQueue := queueworker.ParseQueueName(queueName)
+
+		if hasSubQueue {
+			// Restore a specific sub-queue
+			if err := store.RestoreSubQueue(ctx, queueName); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			// Re-register in asynq
+			if err := store.RegisterAsynqQueues(ctx, []string{queueName}); err != nil {
+				log.Printf("Warning: failed to register queue in asynq: %v", err)
+			}
+		} else {
+			// Restore the entire parent queue
+			if err := store.EnableQueue(ctx, parent); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			// Re-register all sub-queues in asynq
+			queues, err := store.ListQueues(ctx)
+			if err == nil {
+				var matchingQueues []string
+				for _, q := range queues {
+					p, _, _ := queueworker.ParseQueueName(q)
+					if p == parent {
+						matchingQueues = append(matchingQueues, q)
+					}
+				}
+				if len(matchingQueues) > 0 {
+					if err := store.RegisterAsynqQueues(ctx, matchingQueues); err != nil {
+						log.Printf("Warning: failed to register queues in asynq: %v", err)
+					}
+				}
+			}
+		}
+
+		log.Printf("[QUEUEWORKER] Restored: %s", queueName)
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": fmt.Sprintf("Queue '%s' restored successfully", queueName),
 		})
 	}
 }

@@ -1,53 +1,65 @@
-# Working with the React UI
+# runqy Monitoring UI v2
 
-This file explains how to work with Asynqmon UI.
+Modern monitoring dashboard for runqy built with SvelteKit + Skeleton.dev.
 
-## Introduction
+## Tech Stack
 
-The Asynqmon UI was bootstrapped using [Create React App](https://github.com/facebook/create-react-app), a popular toolkit for generating React application setups. You can find general information about Create React App on [their documentation site](https://create-react-app.dev/).
+- **SvelteKit** - Full-stack framework with SSR/SPA modes
+- **Skeleton.dev** - Tailwind-based UI kit for Svelte
+- **TypeScript** - Type safety
+- **Chart.js** - Lightweight charting (planned)
 
-Instead of plain JavaScript, we use [TypeScript](https://www.typescriptlang.org/) to ensure typed code.
+## Development
 
-## Development environment
+```bash
+# Install dependencies
+npm install
 
-To work with the React UI code, you will need to have the following tools installed:
+# Start dev server (with proxy to backend at localhost:3000)
+npm run dev
 
-- The [Node.js](https://nodejs.org/) JavaScript runtime.
-- The [Yarn](https://yarnpkg.com/) package manager.
-- _Recommended:_ An editor with TypeScript, React, and [ESLint](https://eslint.org/) linting support. See e.g. [Create React App's editor setup instructions](https://create-react-app.dev/docs/setting-up-your-editor/). If you are not sure which editor to use, we recommend using [Visual Studio Code](https://code.visualstudio.com/docs/languages/typescript). Make sure that [the editor uses the project's TypeScript version rather than its own](https://code.visualstudio.com/docs/typescript/typescript-compiling#_using-the-workspace-version-of-typescript).
+# Build for production
+npm run build
 
-**NOTE**: When using Visual Studio Code, be sure to open the `ui/` directory in the editor instead of the root of the repository. This way, the right ESLint and TypeScript configuration will be picked up from the React workspace.
+# Preview production build
+npm run preview
+```
 
-## Installing npm dependencies
+## Project Structure
 
-The React UI depends on a large number of [npm](https://www.npmjs.com/) packages. These are not checked in, so you will need to download and install them locally via the Yarn package manager:
+```
+src/
+├── lib/
+│   ├── api/           # API client and TypeScript types
+│   ├── components/    # Reusable UI components
+│   ├── stores/        # Svelte stores for state
+│   └── utils/         # Formatting and utility functions
+├── routes/
+│   ├── +layout.svelte # App shell with sidebar
+│   ├── +page.svelte   # Dashboard
+│   ├── queues/        # Queue list and details
+│   ├── workers/       # Worker monitoring
+│   ├── system/        # Redis and server info
+│   └── settings/      # User preferences
+└── app.html
+```
 
-    yarn
+## Features
 
-Yarn consults the `package.json` and `yarn.lock` files for dependencies to install. It creates a `node_modules` directory with all installed dependencies.
+- **Dashboard**: Overview of all queues with stats
+- **Queues**: List view with search, detail view with tabbed task states
+- **Workers**: Card/table view with status filtering
+- **System**: Redis info and Asynq server details
+- **Settings**: Theme, poll interval, view density
 
-**NOTE**: Remember to change directory to `ui/` before running this command and the following commands.
+## Integration
 
-## Running a local development server
+The UI consumes the same REST API endpoints as the existing monitoring:
 
-You can start a development server for the React UI outside of a running Asynqmon server by running:
+- `GET /api/queues` - List queues
+- `GET /api/queues/{qname}` - Queue details
+- `GET /api/queues/{qname}/pending_tasks` etc.
+- `GET /api/workers` - Workers list
+- `GET /api/redis_info` - Redis stats
 
-    yarn start
-
-This will open a browser window with the React app running on http://localhost:3000/. The page will reload if you make edits to the source code. You will also see any lint errors in the console.
-
-## Building the app for production
-
-To build a production-optimized version of the React app to a `build` subdirectory, run:
-
-    yarn build
-
-**NOTE:** You will likely not need to do this directly. Instead, this is taken care of by the `build` target in the main Asynqmon `Makefile` when building the full binary.
-
-## Integration into Asynqmon
-
-To build a Asynqmon binary that includes a compiled-in version of the production build of the React app, change to the root of the repository and run:
-
-    make build
-
-This installs npm dependencies via Yarn, builds a production build of the React app, and then finally compiles in all web assets into the Asynqmon binary.
+Build output goes to `build/` directory which can be embedded by Go.
