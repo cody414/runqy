@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+@import '@skeletonlabs/skeleton/themes/cerberus';
+@import '@skeletonlabs/skeleton';
+
+/* Scrollbar styles */
+.scrollbar-thin {
+	scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+	background-color: var(--color-surface-400);
+	border-radius: 3px;
+}
+
+/* Sidebar transition */
+.sidebar-transition {
+	transition: width 200ms ease-in-out;
+}
+
+/* JSON Viewer */
+.json-key {
+	color: var(--color-primary-500);
+}
+
+.json-string {
+	color: var(--color-success-500);
+}
+
+.json-number {
+	color: var(--color-warning-500);
+}
+
+.json-boolean {
+	color: var(--color-tertiary-500);
+}
+
+.json-null {
+	color: var(--color-surface-500);
+}
+
+/* Refresh button animation */
+@keyframes spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+.refresh-spinning svg {
+	animation: spin 0.5s ease-in-out;
+}

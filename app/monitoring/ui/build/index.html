@@ -1,1 +1,44 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="icon" type="image/png" href="/[[.RootPath]]/favicon.ico"/><link rel="icon" type="image/png" sizes="32x32" href="/[[.RootPath]]/favicon-32x32.png"/><link rel="icon" type="image/png" sizes="16x16" href="/[[.RootPath]]/favicon-16x16.png"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Asynq monitoring web console"/><link rel="apple-touch-icon" sizes="180x180" href="/[[.RootPath]]/apple-touch-icon.png"/><link rel="manifest" href="/[[.RootPath]]/manifest.json"/><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"/><link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"/><script>window.FLAG_ROOT_PATH="/[[.RootPath]]",window.FLAG_PROMETHEUS_SERVER_ADDRESS="/[[.PrometheusAddr]]",window.FLAG_READ_ONLY="/[[.ReadOnly]]"</script><title>Asynq - Monitoring</title><script defer="defer" src="/[[.RootPath]]/static/js/main.aa597e52.js"></script></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+<!doctype html>
+<html lang="en" data-theme="cerberus">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="/monitoring/favicon.svg" type="image/svg+xml" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+		
+		<link rel="modulepreload" href="/monitoring/_app/immutable/entry/start.BnP5zn9T.js">
+		<link rel="modulepreload" href="/monitoring/_app/immutable/chunks/CU6E9UNP.js">
+		<link rel="modulepreload" href="/monitoring/_app/immutable/chunks/DhxUbCQ7.js">
+		<link rel="modulepreload" href="/monitoring/_app/immutable/chunks/Dsj4qW27.js">
+		<link rel="modulepreload" href="/monitoring/_app/immutable/chunks/Q-iCxnxO.js">
+		<link rel="modulepreload" href="/monitoring/_app/immutable/entry/app.BQweZezK.js">
+		<link rel="modulepreload" href="/monitoring/_app/immutable/chunks/fm2eatE2.js">
+		<link rel="modulepreload" href="/monitoring/_app/immutable/chunks/DJhB2Vij.js">
+		<link rel="modulepreload" href="/monitoring/_app/immutable/chunks/DtC64SJE.js">
+		<link rel="modulepreload" href="/monitoring/_app/immutable/chunks/D41w-iqP.js">
+		<link rel="modulepreload" href="/monitoring/_app/immutable/chunks/BchrYRSj.js">
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">
+			<script>
+				{
+					__sveltekit_dcrpe9 = {
+						base: "/monitoring",
+						assets: "/monitoring"
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("/monitoring/_app/immutable/entry/start.BnP5zn9T.js"),
+						import("/monitoring/_app/immutable/entry/app.BQweZezK.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+				}
+			</script>
+		</div>
+	</body>
+</html>

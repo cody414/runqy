@@ -129,7 +129,58 @@ func (c *QueueWorkersYAML) Validate() error {
 	return nil
 }
 
+// ToQueueAndSubQueues converts a YAML queue config to a Queue and its SubQueues
+// The deployment config is stored once in the parent Queue
+// Each sub-queue only stores its priority
+func (q *QueueYAML) ToQueueAndSubQueues(baseName string) (*Queue, []SubQueue) {
+	// Create deployment config if present
+	var deployment *DeploymentConfig
+	if q.Deployment != nil {
+		deployment = &DeploymentConfig{
+			GitURL:             q.Deployment.GitURL,
+			Branch:             q.Deployment.Branch,
+			CodePath:           q.Deployment.CodePath,
+			StartupCmd:         q.Deployment.StartupCmd,
+			Mode:               q.Deployment.Mode,
+			StartupTimeoutSecs: q.Deployment.StartupTimeoutSecs,
+			RedisStorage:       q.Deployment.RedisStorage,
+			Vaults:             q.Deployment.Vaults,
+			GitToken:           q.Deployment.GitToken,
+		}
+	}
+
+	// Create the parent queue
+	queue := &Queue{
+		Name:         baseName,
+		Provider:     q.Provider,
+		Deployment:   deployment,
+		InputSchema:  q.Input,
+		OutputSchema: q.Output,
+		Enabled:      true,
+	}
+
+	// Create sub-queues
+	var subQueues []SubQueue
+	if len(q.SubQueues) > 0 {
+		for _, sq := range q.SubQueues {
+			subQueues = append(subQueues, SubQueue{
+				Name:     sq.Name,
+				Priority: sq.Priority,
+			})
+		}
+	} else {
+		// No sub-queues defined, create a default one
+		subQueues = append(subQueues, SubQueue{
+			Name:     DefaultSubQueueName,
+			Priority: q.Priority,
+		})
+	}
+
+	return queue, subQueues
+}
+
 // ToQueueConfigs converts a YAML queue config to runtime QueueConfig(s)
+// Deprecated: Use ToQueueAndSubQueues instead
 // If sub_queues are defined, creates multiple configs like "inference.high", "inference.low"
 // If no sub_queues, creates a single config with name "queueName.default"
 func (q *QueueYAML) ToQueueConfigs(baseName string) []*QueueConfig {

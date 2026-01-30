@@ -20,7 +20,8 @@
 - Redis-backed persistent queue with retry support
 - PostgreSQL storage for queue worker configurations
 - YAML-based queue worker definitions with schema validation
-- Built-in web dashboard for monitoring (asynqmon)
+- Built-in web dashboard for real-time monitoring
+- Prometheus metrics endpoint (`/metrics`) for advanced monitoring and alerting
 - Swagger API documentation
 - Hot-reload of queue configurations (file watching or git polling)
 
@@ -107,6 +108,27 @@ Configure via environment variables or YAML files. Key variables:
 - `QUEUE_WORKERS_DIR` - Path to queue YAML configs
 
 See [Configuration Reference](https://docs.runqy.com/server/configuration/) for full documentation.
+
+## Monitoring
+
+The web dashboard at `/monitoring` provides real-time visibility into queues, tasks, and workers—no additional setup required.
+
+For advanced monitoring, runqy exposes Prometheus metrics at `/metrics`:
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'runqy'
+    static_configs:
+      - targets: ['localhost:3000']
+```
+
+Optionally, set `PROMETHEUS_ADDRESS` to enable time-series charts in the dashboard:
+```bash
+export PROMETHEUS_ADDRESS=http://localhost:9090
+```
+
+See [Monitoring Guide](https://docs.runqy.com/guides/monitoring/) for full documentation including Grafana dashboards and alerting.
 
 ## See Also
 

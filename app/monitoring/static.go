@@ -94,12 +94,16 @@ func (h *uiAssetsHandler) serveFile(w http.ResponseWriter, urlPath string) (code
 		}
 		return http.StatusInternalServerError, err
 	}
-	// Setting the MIME type for .js files manually to application/javascript as
-	// http.DetectContentType is using https://mimesniff.spec.whatwg.org/ which
-	// will not recognize application/javascript for security reasons.
-	if strings.HasSuffix(filePath, ".js") {
+	// Setting the MIME type manually for files that http.DetectContentType
+	// doesn't handle correctly (it uses https://mimesniff.spec.whatwg.org/).
+	switch {
+	case strings.HasSuffix(filePath, ".js"):
 		w.Header().Add("Content-Type", "application/javascript; charset=utf-8")
-	} else {
+	case strings.HasSuffix(filePath, ".css"):
+		w.Header().Add("Content-Type", "text/css; charset=utf-8")
+	case strings.HasSuffix(filePath, ".svg"):
+		w.Header().Add("Content-Type", "image/svg+xml")
+	default:
 		w.Header().Add("Content-Type", http.DetectContentType(bytes))
 	}
 

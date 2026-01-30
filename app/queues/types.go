@@ -102,7 +102,39 @@ type DeploymentYAML struct {
 	GitToken           string   `yaml:"git_token,omitempty"` // Vault reference for git auth: "vault://vault-name/key"
 }
 
+// Queue represents a parent queue with deployment configuration (stored in 'queues' table)
+type Queue struct {
+	ID           int               `json:"id" db:"id"`
+	Name         string            `json:"name" db:"name"`
+	Provider     string            `json:"provider,omitempty" db:"provider"`
+	Deployment   *DeploymentConfig `json:"deployment,omitempty"`
+	InputSchema  []FieldSchema     `json:"input_schema,omitempty"`
+	OutputSchema []FieldSchema     `json:"output_schema,omitempty"`
+	Description  string            `json:"description,omitempty" db:"description"`
+	Enabled      bool              `json:"enabled" db:"enabled"`
+	CreatedAt    int64             `json:"created_at" db:"created_at"`
+	UpdatedAt    int64             `json:"updated_at" db:"updated_at"`
+}
+
+// SubQueue represents a sub-queue with priority (stored in 'sub_queues' table, references parent Queue)
+type SubQueue struct {
+	ID        int    `json:"id" db:"id"`
+	QueueID   int    `json:"queue_id" db:"queue_id"`
+	Name      string `json:"name" db:"name"` // Just "high", "low", "default"
+	Priority  int    `json:"priority" db:"priority"`
+	Enabled   bool   `json:"enabled" db:"enabled"`
+	CreatedAt int64  `json:"created_at" db:"created_at"`
+	UpdatedAt int64  `json:"updated_at" db:"updated_at"`
+}
+
+// QueueWithSubQueues is the combined view for API responses
+type QueueWithSubQueues struct {
+	Queue
+	SubQueues []SubQueue `json:"sub_queues"`
+}
+
 // QueueConfig is the runtime representation stored in DB and returned via API
+// Deprecated: Use Queue and SubQueue types instead. This type is kept for backward compatibility.
 type QueueConfig struct {
 	Name       string            `json:"name"`
 	Priority   int               `json:"priority"`

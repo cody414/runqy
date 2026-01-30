@@ -321,14 +321,25 @@ func runConfigReload(cmd *cobra.Command, args []string) error {
 
 	for _, y := range yamls {
 		for queueName, queueCfg := range y.Queues {
-			configs := queueCfg.ToQueueConfigs(queueName)
+			// Use the new two-table model
+			queue, subQueues := queueCfg.ToQueueAndSubQueues(queueName)
 
-			for _, qc := range configs {
-				if err := store.Save(ctx, qc); err != nil {
-					errors = append(errors, fmt.Sprintf("%s: %v", qc.Name, err))
+			// Save the parent queue
+			queueID, err := store.SaveQueue(ctx, queue)
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("%s: failed to save queue: %v", queueName, err))
+				continue
+			}
+
+			// Save each sub-queue
+			for _, sq := range subQueues {
+				if err := store.SaveSubQueue(ctx, queueID, &sq); err != nil {
+					fullName := queueworker.BuildFullQueueName(queueName, sq.Name)
+					errors = append(errors, fmt.Sprintf("%s: failed to save sub-queue: %v", fullName, err))
 					continue
 				}
-				reloaded = append(reloaded, qc.Name)
+				fullName := queueworker.BuildFullQueueName(queueName, sq.Name)
+				reloaded = append(reloaded, fullName)
 			}
 		}
 	}

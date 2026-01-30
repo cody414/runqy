@@ -6,8 +6,11 @@ import (
 	"net/http"
 	"strings"
 
+	queueworker "github.com/Publikey/runqy/queues"
+	"github.com/Publikey/runqy/vaults"
 	"github.com/gorilla/mux"
 	"github.com/hibiken/asynq"
+	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -42,6 +45,21 @@ type Options struct {
 
 	// Set ReadOnly to true to restrict user to view-only mode.
 	ReadOnly bool
+
+	// DB is the database connection for retrieving database info.
+	//
+	// This field is optional.
+	DB *sqlx.DB
+
+	// VaultStore is the vault store for accessing encrypted vaults.
+	//
+	// This field is optional.
+	VaultStore *vaults.Store
+
+	// QueueStore is the queue worker store for managing queue configurations.
+	//
+	// This field is optional.
+	QueueStore *queueworker.Store
 }
 
 // HTTPHandler is a http.Handler for asynqmon application.
@@ -74,7 +92,7 @@ func New(opts Options) *HTTPHandler {
 	opts.RootPath = strings.TrimSuffix(opts.RootPath, "/")
 
 	return &HTTPHandler{
-		router:   muxRouter(opts, rc, i),
+		router:   muxRouter(opts, rc, i, opts.DB),
 		closers:  []func() error{rc.Close, i.Close},
 		rootPath: opts.RootPath,
 	}
@@ -99,7 +117,7 @@ func (h *HTTPHandler) RootPath() string {
 //go:embed ui/build/*
 var staticContents embed.FS
 
-func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspector) *mux.Router {
+func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspector, db *sqlx.DB) *mux.Router {
 	router := mux.NewRouter().PathPrefix(opts.RootPath).Subrouter()
 
 	var payloadFmt PayloadFormatter = DefaultPayloadFormatter
@@ -117,9 +135,10 @@ func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspecto
 	// Queue endpoints.
 	api.HandleFunc("/queues", newListQueuesHandlerFunc(inspector)).Methods("GET")
 	api.HandleFunc("/queues/{qname}", newGetQueueHandlerFunc(inspector)).Methods("GET")
-	api.HandleFunc("/queues/{qname}", newDeleteQueueHandlerFunc(inspector)).Methods("DELETE")
+	api.HandleFunc("/queues/{qname}", newDeleteQueueHandlerFunc(inspector, opts.QueueStore)).Methods("DELETE")
 	api.HandleFunc("/queues/{qname}:pause", newPauseQueueHandlerFunc(inspector)).Methods("POST")
 	api.HandleFunc("/queues/{qname}:resume", newResumeQueueHandlerFunc(inspector)).Methods("POST")
+	api.HandleFunc("/queues/{qname}:restore", newRestoreQueueHandlerFunc(opts.QueueStore)).Methods("POST")
 
 	// Queue Historical Stats endpoint.
 	api.HandleFunc("/queue_stats", newListQueueStatsHandlerFunc(inspector)).Methods("GET")
@@ -205,6 +224,32 @@ func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspecto
 		api.HandleFunc("/redis_info", newRedisClusterInfoHandlerFunc(c, inspector)).Methods("GET")
 	case *redis.Client:
 		api.HandleFunc("/redis_info", newRedisInfoHandlerFunc(c)).Methods("GET")
+	}
+
+	// Database info endpoint.
+	if db != nil {
+		api.HandleFunc("/database_info", newDatabaseInfoHandlerFunc(db)).Methods("GET")
+	}
+
+	// Vaults endpoints.
+	if opts.VaultStore != nil {
+		api.HandleFunc("/vaults", newListVaultsHandlerFunc(opts.VaultStore)).Methods("GET")
+		api.HandleFunc("/vaults", newCreateVaultHandlerFunc(opts.VaultStore)).Methods("POST")
+		api.HandleFunc("/vaults/{name}", newGetVaultHandlerFunc(opts.VaultStore)).Methods("GET")
+		api.HandleFunc("/vaults/{name}", newDeleteVaultHandlerFunc(opts.VaultStore)).Methods("DELETE")
+		api.HandleFunc("/vaults/{name}/entries", newSetEntryHandlerFunc(opts.VaultStore)).Methods("POST")
+		api.HandleFunc("/vaults/{name}/entries", newListEntriesHandlerFunc(opts.VaultStore)).Methods("GET")
+		api.HandleFunc("/vaults/{name}/entries/{key}", newDeleteEntryHandlerFunc(opts.VaultStore)).Methods("DELETE")
+	}
+
+	// Queue config endpoints.
+	if opts.QueueStore != nil {
+		api.HandleFunc("/queue_configs", newListQueueConfigsHandlerFunc(opts.QueueStore)).Methods("GET")
+		api.HandleFunc("/queue_configs", newCreateQueueConfigHandlerFunc(opts.QueueStore)).Methods("POST")
+		api.HandleFunc("/queue_configs/{name}", newGetQueueConfigHandlerFunc(opts.QueueStore)).Methods("GET")
+		api.HandleFunc("/queue_configs/{name}", newUpdateQueueConfigHandlerFunc(opts.QueueStore)).Methods("PUT")
+		api.HandleFunc("/queue_configs/{name}", newDeleteQueueConfigHandlerFunc(opts.QueueStore)).Methods("DELETE")
+		api.HandleFunc("/queue_configs/{name}:restore", newRestoreQueueConfigHandlerFunc(opts.QueueStore)).Methods("POST")
 	}
 
 	// Time series metrics endpoints.
