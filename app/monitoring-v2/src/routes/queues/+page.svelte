@@ -171,20 +171,65 @@
 		}
 	}
 
-	async function handleSaveQueueConfig(name: string, priority: number, provider: string, deployment: DeploymentConfig | null) {
+	interface QueueToCreate {
+		name: string;
+		priority: number;
+		provider: string;
+		deployment: DeploymentConfig | null;
+	}
+
+	async function handleSaveQueueConfig(queues: QueueToCreate[]) {
 		queueConfigModalLoading = true;
 		try {
 			if (queueConfigModalMode === 'create') {
-				await createQueueConfig(name, priority, provider || undefined, deployment || undefined);
-				toast.success(`Queue "${name}" created`);
+				// Create queues sequentially to avoid SQLite locking issues
+				let succeeded = 0;
+				let failed = 0;
+				const errors: string[] = [];
+
+				for (const q of queues) {
+					try {
+						await createQueueConfig(q.name, q.priority, q.provider || undefined, q.deployment || undefined);
+						succeeded++;
+					} catch (e) {
+						failed++;
+						errors.push(e instanceof Error ? e.message : 'Unknown error');
+					}
+				}
+
+				if (failed > 0) {
+					toast.error(`Created ${succeeded} queue(s), ${failed} failed: ${errors[0]}`);
+				} else if (succeeded === 1) {
+					toast.success(`Queue "${queues[0].name}" created`);
+				} else {
+					toast.success(`${succeeded} queues created`);
+				}
 			} else {
-				await updateQueueConfig(name, priority, provider || undefined, deployment || undefined);
-				toast.success(`Queue "${name}" updated`);
+				// Edit mode - single queue
+				const q = queues[0];
+				await updateQueueConfig(q.name, q.priority, q.provider || undefined, q.deployment || undefined);
+				toast.success(`Queue "${q.name}" updated`);
 			}
 			await loadData();
 			queueConfigModalOpen = false;
 		} catch (e) {
 			const errorMessage = e instanceof Error ? e.message : 'Failed to save queue config';
+			toast.error(errorMessage);
+		} finally {
+			queueConfigModalLoading = false;
+		}
+	}
+
+	async function handleSaveSubqueue(parentQueue: string, subqueueName: string, priority: number) {
+		queueConfigModalLoading = true;
+		const fullName = `${parentQueue}.${subqueueName}`;
+		try {
+			await createQueueConfig(fullName, priority);
+			toast.success(`Subqueue "${fullName}" created`);
+			await loadData();
+			queueConfigModalOpen = false;
+		} catch (e) {
+			const errorMessage = e instanceof Error ? e.message : 'Failed to create subqueue';
 			toast.error(errorMessage);
 		} finally {
 			queueConfigModalLoading = false;
@@ -730,5 +775,7 @@
 	loading={queueConfigModalLoading}
 	mode={queueConfigModalMode}
 	config={selectedQueueConfig}
+	existingQueues={$queuesStore.queues.map(q => q.queue)}
 	onsave={handleSaveQueueConfig}
+	onsavesubqueue={handleSaveSubqueue}
 />
