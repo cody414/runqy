@@ -296,6 +296,32 @@ func runServe(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	// Health check endpoints (no auth required)
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":    "ok",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
+
+	router.GET("/healthz", func(c *gin.Context) {
+		// Kubernetes-style health check with dependency status
+		redisOK := redisAddr.RDB.Ping(c).Err() == nil
+
+		status := "ok"
+		httpCode := 200
+		if !redisOK {
+			status = "degraded"
+			httpCode = 503
+		}
+
+		c.JSON(httpCode, gin.H{
+			"status":    status,
+			"redis":     redisOK,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
+
 	api.SetupAPI(router, qwStore, cfg.QueueWorkersDir, cfg, redisAddr.AsynqOpt)
 	api.SetupVaultsAPI(router, vaultStore)
 
