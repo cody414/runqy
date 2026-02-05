@@ -16,7 +16,7 @@ COPY app/ .
 
 # Build with version info
 RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags "-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
+    -ldflags "-s -w -X github.com/Publikey/runqy/cmd.Version=${VERSION} -X github.com/Publikey/runqy/cmd.GitCommit=${COMMIT} -X github.com/Publikey/runqy/cmd.BuildDate=${BUILD_DATE}" \
     -o /runqy .
 
 # Runtime stage

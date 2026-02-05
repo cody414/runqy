@@ -10,9 +10,6 @@ import (
 )
 
 var (
-	// Version is set at build time
-	Version = "dev"
-
 	// Global config loaded from environment
 	cfg *config.Config
 

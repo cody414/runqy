@@ -22,9 +22,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X main.Version={{.Version}}
-      - -X main.Commit={{.Commit}}
-      - -X main.BuildDate={{.Date}}
+      - -X github.com/Publikey/runqy/cmd.Version={{.Version}}
+      - -X github.com/Publikey/runqy/cmd.GitCommit={{.Commit}}
+      - -X github.com/Publikey/runqy/cmd.BuildDate={{.Date}}
 
 archives:
   - id: default

@@ -153,7 +153,8 @@ CREATE INDEX IF NOT EXISTS idx_admin_user_email ON admin_user(email);
 
 // EnsureSchema checks if required tables exist and creates them if they don't.
 // This is called at application startup to ensure the database is ready.
-func EnsureSchema(db *sqlx.DB) error {
+// The debug parameter controls whether verbose schema logs are printed.
+func EnsureSchema(db *sqlx.DB, debug bool) error {
 	// Check for old queue_workers_config table and migrate if needed
 	oldTableExists, err := tableExists(db, "queue_workers_config")
 	if err != nil {
@@ -161,11 +162,15 @@ func EnsureSchema(db *sqlx.DB) error {
 	}
 
 	if oldTableExists {
-		log.Println("[SCHEMA] Found old 'queue_workers_config' table, dropping it...")
+		if debug {
+			log.Println("[SCHEMA] Found old 'queue_workers_config' table, dropping it...")
+		}
 		if _, err := db.Exec("DROP TABLE IF EXISTS queue_workers_config"); err != nil {
 			return fmt.Errorf("failed to drop old table: %w", err)
 		}
-		log.Println("[SCHEMA] Old 'queue_workers_config' table dropped. Run 'runqy config reload' to re-populate from YAML files.")
+		if debug {
+			log.Println("[SCHEMA] Old 'queue_workers_config' table dropped. Run 'runqy config reload' to re-populate from YAML files.")
+		}
 	}
 
 	// Check and create queues/sub_queues tables
@@ -175,17 +180,23 @@ func EnsureSchema(db *sqlx.DB) error {
 	}
 
 	if queuesExist {
-		log.Println("[SCHEMA] Tables 'queues' and 'sub_queues' already exist")
+		if debug {
+			log.Println("[SCHEMA] Tables 'queues' and 'sub_queues' already exist")
+		}
 		// Run migrations for existing tables
-		if err := migrateSubQueuesEnabled(db); err != nil {
+		if err := migrateSubQueuesEnabled(db, debug); err != nil {
 			return fmt.Errorf("failed to migrate sub_queues enabled column: %w", err)
 		}
 	} else {
-		log.Println("[SCHEMA] Creating tables 'queues' and 'sub_queues'...")
+		if debug {
+			log.Println("[SCHEMA] Creating tables 'queues' and 'sub_queues'...")
+		}
 		if err := createQueuesSchema(db); err != nil {
 			return fmt.Errorf("failed to create queues schema: %w", err)
 		}
-		log.Println("[SCHEMA] Tables 'queues' and 'sub_queues' created successfully")
+		if debug {
+			log.Println("[SCHEMA] Tables 'queues' and 'sub_queues' created successfully")
+		}
 	}
 
 	// Check and create vault tables
@@ -195,13 +206,19 @@ func EnsureSchema(db *sqlx.DB) error {
 	}
 
 	if vaultsExist {
-		log.Println("[SCHEMA] Vaults tables already exist")
+		if debug {
+			log.Println("[SCHEMA] Vaults tables already exist")
+		}
 	} else {
-		log.Println("[SCHEMA] Creating vaults tables...")
+		if debug {
+			log.Println("[SCHEMA] Creating vaults tables...")
+		}
 		if err := createVaultsSchema(db); err != nil {
 			return fmt.Errorf("failed to create vaults schema: %w", err)
 		}
-		log.Println("[SCHEMA] Vaults tables created successfully")
+		if debug {
+			log.Println("[SCHEMA] Vaults tables created successfully")
+		}
 	}
 
 	// Check and create admin_user table
@@ -211,13 +228,19 @@ func EnsureSchema(db *sqlx.DB) error {
 	}
 
 	if adminUserExists {
-		log.Println("[SCHEMA] Admin user table already exists")
+		if debug {
+			log.Println("[SCHEMA] Admin user table already exists")
+		}
 	} else {
-		log.Println("[SCHEMA] Creating admin_user table...")
+		if debug {
+			log.Println("[SCHEMA] Creating admin_user table...")
+		}
 		if err := createAdminUserSchema(db); err != nil {
 			return fmt.Errorf("failed to create admin_user schema: %w", err)
 		}
-		log.Println("[SCHEMA] Admin user table created successfully")
+		if debug {
+			log.Println("[SCHEMA] Admin user table created successfully")
+		}
 	}
 
 	return nil
@@ -297,7 +320,7 @@ func createAdminUserSchema(db *sqlx.DB) error {
 }
 
 // migrateSubQueuesEnabled adds the 'enabled' column to sub_queues if it doesn't exist
-func migrateSubQueuesEnabled(db *sqlx.DB) error {
+func migrateSubQueuesEnabled(db *sqlx.DB, debug bool) error {
 	driverName := db.DriverName()
 
 	// Check if column exists
@@ -327,7 +350,9 @@ func migrateSubQueuesEnabled(db *sqlx.DB) error {
 		return nil // Column already exists
 	}
 
-	log.Println("[SCHEMA] Adding 'enabled' column to sub_queues table...")
+	if debug {
+		log.Println("[SCHEMA] Adding 'enabled' column to sub_queues table...")
+	}
 
 	if driverName == "sqlite" {
 		// SQLite migration
@@ -347,6 +372,8 @@ func migrateSubQueuesEnabled(db *sqlx.DB) error {
 		}
 	}
 
-	log.Println("[SCHEMA] Added 'enabled' column to sub_queues table")
+	if debug {
+		log.Println("[SCHEMA] Added 'enabled' column to sub_queues table")
+	}
 	return nil
 }
