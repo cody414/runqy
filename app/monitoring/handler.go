@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Publikey/runqy/auth"
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/Publikey/runqy/vaults"
 	"github.com/gorilla/mux"
@@ -60,6 +61,11 @@ type Options struct {
 	//
 	// This field is optional.
 	QueueStore *queueworker.Store
+
+	// AuthStore is the authentication store for admin user management.
+	//
+	// This field is optional. If nil, authentication is disabled.
+	AuthStore *auth.Store
 }
 
 // HTTPHandler is a http.Handler for asynqmon application.
@@ -114,7 +120,7 @@ func (h *HTTPHandler) RootPath() string {
 	return h.rootPath
 }
 
-//go:embed ui/build/*
+//go:embed all:ui/build
 var staticContents embed.FS
 
 func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspector, db *sqlx.DB) *mux.Router {
@@ -131,6 +137,14 @@ func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspecto
 	}
 
 	api := router.PathPrefix("/api").Subrouter()
+
+	// Auth endpoints (public, no middleware)
+	if opts.AuthStore != nil {
+		api.HandleFunc("/auth/status", newAuthStatusHandlerFunc(opts.AuthStore)).Methods("GET")
+		api.HandleFunc("/auth/setup", newAuthSetupHandlerFunc(opts.AuthStore)).Methods("POST")
+		api.HandleFunc("/auth/login", newAuthLoginHandlerFunc(opts.AuthStore)).Methods("POST")
+		api.HandleFunc("/auth/logout", newAuthLogoutHandlerFunc()).Methods("POST")
+	}
 
 	// Queue endpoints.
 	api.HandleFunc("/queues", newListQueuesHandlerFunc(inspector)).Methods("GET")
@@ -260,6 +274,11 @@ func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspecto
 		api.Use(restrictToReadOnly)
 	}
 
+	// Apply auth middleware if AuthStore is configured
+	if opts.AuthStore != nil {
+		api.Use(authMiddleware)
+	}
+
 	// Everything else, route to uiAssetsHandler.
 	router.NotFoundHandler = &uiAssetsHandler{
 		rootPath:       opts.RootPath,
@@ -281,5 +300,20 @@ func restrictToReadOnly(h http.Handler) http.Handler {
 			return
 		}
 		h.ServeHTTP(w, r)
+	})
+}
+
+// authMiddleware is a middleware that requires authentication for all routes
+// except the /api/auth/* endpoints.
+func authMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip auth for /api/auth/* endpoints (using Contains to handle RootPath prefix)
+		if strings.Contains(r.URL.Path, "/api/auth/") {
+			h.ServeHTTP(w, r)
+			return
+		}
+
+		// Apply auth middleware
+		auth.RequireAuth(h).ServeHTTP(w, r)
 	})
 }

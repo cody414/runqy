@@ -125,6 +125,32 @@ CREATE INDEX IF NOT EXISTS idx_vault_entries_vault_id ON vault_entries(vault_id)
 CREATE INDEX IF NOT EXISTS idx_vault_entries_key ON vault_entries(vault_id, key);
 `
 
+// PostgreSQL schema for admin_user (authentication)
+const postgresAdminUserSchemaSQL = `
+CREATE TABLE IF NOT EXISTS admin_user (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_user_email ON admin_user(email);
+`
+
+// SQLite schema for admin_user (authentication)
+const sqliteAdminUserSchemaSQL = `
+CREATE TABLE IF NOT EXISTS admin_user (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_user_email ON admin_user(email);
+`
+
 // EnsureSchema checks if required tables exist and creates them if they don't.
 // This is called at application startup to ensure the database is ready.
 func EnsureSchema(db *sqlx.DB) error {
@@ -176,6 +202,22 @@ func EnsureSchema(db *sqlx.DB) error {
 			return fmt.Errorf("failed to create vaults schema: %w", err)
 		}
 		log.Println("[SCHEMA] Vaults tables created successfully")
+	}
+
+	// Check and create admin_user table
+	adminUserExists, err := tableExists(db, "admin_user")
+	if err != nil {
+		return fmt.Errorf("failed to check admin_user table existence: %w", err)
+	}
+
+	if adminUserExists {
+		log.Println("[SCHEMA] Admin user table already exists")
+	} else {
+		log.Println("[SCHEMA] Creating admin_user table...")
+		if err := createAdminUserSchema(db); err != nil {
+			return fmt.Errorf("failed to create admin_user schema: %w", err)
+		}
+		log.Println("[SCHEMA] Admin user table created successfully")
 	}
 
 	return nil
@@ -233,6 +275,21 @@ func createVaultsSchema(db *sqlx.DB) error {
 		schemaSQL = sqliteVaultsSchemaSQL
 	} else {
 		schemaSQL = postgresVaultsSchemaSQL
+	}
+
+	_, err := db.Exec(schemaSQL)
+	return err
+}
+
+// createAdminUserSchema creates the admin_user table based on the database driver
+func createAdminUserSchema(db *sqlx.DB) error {
+	driverName := db.DriverName()
+
+	var schemaSQL string
+	if driverName == "sqlite" {
+		schemaSQL = sqliteAdminUserSchemaSQL
+	} else {
+		schemaSQL = postgresAdminUserSchemaSQL
 	}
 
 	_, err := db.Exec(schemaSQL)

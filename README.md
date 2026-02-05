@@ -111,7 +111,7 @@ See [Configuration Reference](https://docs.runqy.com/server/configuration/) for 
 
 ## Monitoring
 
-The web dashboard at `/monitoring` provides real-time visibility into queues, tasks, and workers—no additional setup required.
+The web dashboard at `/monitoring` provides real-time visibility into queues, tasks, and workers. On first access, you'll be prompted to create an admin account to secure the dashboard.
 
 For advanced monitoring, runqy exposes Prometheus metrics at `/metrics`:
 
