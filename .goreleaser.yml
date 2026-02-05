@@ -2,6 +2,10 @@ version: 2
 
 project_name: runqy
 
+git:
+  # Allow dirty state because npm build regenerates UI files with different hashes
+  allow_dirty: true
+
 before:
   hooks:
     - go -C app mod tidy
