@@ -620,35 +620,36 @@ func reloadFromYAML(ctx context.Context, store *queueworker.Store, dir string) (
 }
 
 // LoadQueueWorkersAtStartup is called during application startup to load YAML configs
-// Returns the list of provider types found in the configs for provider registration
-func LoadQueueWorkersAtStartup(store *queueworker.Store, configDir string) ([]string, error) {
+// Returns the list of queue names loaded and any error encountered
+// The debug parameter controls whether verbose logs are printed
+func LoadQueueWorkersAtStartup(store *queueworker.Store, configDir string, debug bool) ([]string, error) {
 	ctx := context.Background()
-	reloaded, providerTypes, errors := reloadFromYAMLWithProviders(ctx, store, configDir)
+	reloaded, _, errors := reloadFromYAMLWithProviders(ctx, store, configDir, debug)
 
-	if len(errors) > 0 {
+	if len(errors) > 0 && debug {
 		for _, e := range errors {
 			log.Printf("[QUEUEWORKER] Warning: %s", e)
 		}
 	}
 
 	if len(reloaded) > 0 {
-		log.Printf("[QUEUEWORKER] Loaded %d queue configurations: %v", len(reloaded), reloaded)
-
 		// Register queues in asynq so they appear in asynqmon
 		if err := store.RegisterAsynqQueues(ctx, reloaded); err != nil {
-			log.Printf("[QUEUEWORKER] Warning: failed to register asynq queues: %v", err)
-		} else {
+			if debug {
+				log.Printf("[QUEUEWORKER] Warning: failed to register asynq queues: %v", err)
+			}
+		} else if debug {
 			log.Printf("[QUEUEWORKER] Registered queues in asynq: %v", reloaded)
 		}
-	} else {
+	} else if debug {
 		log.Printf("[QUEUEWORKER] No queue configurations loaded from %s", configDir)
 	}
 
-	return providerTypes, nil
+	return reloaded, nil
 }
 
 // reloadFromYAMLWithProviders loads configs and returns provider types
-func reloadFromYAMLWithProviders(ctx context.Context, store *queueworker.Store, dir string) ([]string, []string, []string) {
+func reloadFromYAMLWithProviders(ctx context.Context, store *queueworker.Store, dir string, debug bool) ([]string, []string, []string) {
 	var reloaded []string
 	var providerTypes []string
 	var errors []string
@@ -686,7 +687,9 @@ func reloadFromYAMLWithProviders(ctx context.Context, store *queueworker.Store, 
 
 				fullName := queueworker.BuildFullQueueName(queueName, sq.Name)
 				reloaded = append(reloaded, fullName)
-				log.Printf("[QUEUEWORKER] Loaded: %s (provider=%s, priority=%d)", fullName, queue.Provider, sq.Priority)
+				if debug {
+					log.Printf("[QUEUEWORKER] Loaded: %s (provider=%s, priority=%d)", fullName, queue.Provider, sq.Priority)
+				}
 			}
 		}
 	}

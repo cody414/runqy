@@ -30,8 +30,8 @@ var loginCmd = &cobra.Command{
 After logging in, you can use runqy commands without --server and --api-key flags.
 
 Examples:
-  runqy login -s https://production.example.com:3000 -k prod-api-key
-  runqy login -s https://staging.example.com:3000 -k staging-key --name staging`,
+  runqy login --server https://production.example.com:3000 --api-key prod-api-key
+  runqy login --server https://staging.example.com:3000 --name staging`,
 	RunE: runLogin,
 }
 
@@ -93,9 +93,9 @@ Example:
 }
 
 func init() {
-	// login flags
-	loginCmd.Flags().StringVarP(&loginServer, "server", "s", "", "Server URL (required)")
-	loginCmd.Flags().StringVarP(&loginAPIKey, "api-key", "k", "", "API key (will prompt if not provided)")
+	// login flags (using long form only to avoid conflict with global -s and -k flags)
+	loginCmd.Flags().StringVar(&loginServer, "server", "", "Server URL (required)")
+	loginCmd.Flags().StringVar(&loginAPIKey, "api-key", "", "API key (will prompt if not provided)")
 	loginCmd.Flags().StringVarP(&loginProfile, "name", "n", "default", "Profile name")
 	loginCmd.MarkFlagRequired("server")
 
@@ -185,7 +185,7 @@ func runAuthStatus(cmd *cobra.Command, args []string) error {
 	if profileName == "" {
 		fmt.Println("Not logged in.")
 		fmt.Println()
-		fmt.Println("Use 'runqy login -s <server> -k <api-key>' to save credentials.")
+		fmt.Println("Use 'runqy login --server <url> --api-key <key>' to save credentials.")
 		return nil
 	}
 
@@ -215,7 +215,7 @@ func runAuthList(cmd *cobra.Command, args []string) error {
 	if len(servers) == 0 {
 		fmt.Println("No saved servers.")
 		fmt.Println()
-		fmt.Println("Use 'runqy login -s <server> -k <api-key>' to save credentials.")
+		fmt.Println("Use 'runqy login --server <url> --api-key <key>' to save credentials.")
 		return nil
 	}
 

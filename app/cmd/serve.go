@@ -40,7 +40,11 @@ var (
 	watchInterval int
 	useSQLite     bool
 	disableUI     bool
+	debugMode     bool
 )
+
+// DebugMode is a package-level variable that can be checked by other packages
+var DebugMode = false
 
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
@@ -70,10 +74,14 @@ func init() {
 	serveCmd.Flags().IntVar(&watchInterval, "watch-interval", 0, "Git polling interval in seconds (default: 60)")
 	serveCmd.Flags().BoolVar(&useSQLite, "sqlite", false, "Use SQLite instead of PostgreSQL (for testing, NOT recommended for production)")
 	serveCmd.Flags().BoolVar(&disableUI, "no-ui", false, "Disable the monitoring web dashboard")
+	serveCmd.Flags().BoolVar(&debugMode, "debug", false, "Enable verbose logging (GIN routes, detailed startup logs)")
 }
 
 func runServe(cmd *cobra.Command, args []string) {
 	var wg sync.WaitGroup
+
+	// Set package-level debug mode for other packages to check
+	DebugMode = debugMode
 
 	cfg := GetConfig()
 
@@ -100,38 +108,62 @@ func runServe(cmd *cobra.Command, args []string) {
 		cfg.UseSQLite = true
 	}
 
-	// Create API router
-	router := gin.Default()
+	// Initialize startup config for banner
+	startupCfg := StartupConfig{
+		Version:      Version,
+		Port:         cfg.HTTPPort,
+		UIEnabled:    !disableUI,
+		WatchEnabled: enableWatch,
+		GitRepoURL:   cfg.ConfigRepoURL,
+	}
+
+	// Create API router - use release mode by default to suppress GIN logs
+	var router *gin.Engine
+	if debugMode {
+		gin.SetMode(gin.DebugMode)
+		router = gin.Default() // Includes logger and recovery
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+		router = gin.New()
+		router.Use(gin.Recovery()) // Keep recovery but no logger
+	}
 	router.Use(cors.Default())
 
 	redisAddr, err := models.BuildRedisConns()
 	if err != nil {
-		log.Fatalf("[FATAL] Redis build connection failed: %v", err)
+		log.Fatalf("Redis connection failed: %v", err)
 	}
+	startupCfg.RedisHost = cfg.RedisHost + ":" + cfg.RedisPort
+	startupCfg.RedisConnected = true
 
 	// Build database connection for queue worker configs (PostgreSQL or SQLite)
 	db, err := models.BuildDB(cfg)
 	if err != nil {
 		if cfg.UseSQLite {
-			log.Fatalf("[FATAL] SQLite connection failed: %v", err)
+			log.Fatalf("SQLite connection failed: %v", err)
 		} else {
-			log.Fatalf("[FATAL] PostgreSQL connection failed: %v", err)
+			log.Fatalf("PostgreSQL connection failed: %v", err)
 		}
 	}
 	defer db.Close()
 
 	if cfg.UseSQLite {
-		log.Println("")
-		log.Println("WARNING: Using SQLite database. This is NOT recommended for production!")
-		log.Printf("[INFO] SQLite database: %s", cfg.SQLiteDBPath)
-		log.Println("")
+		startupCfg.DatabaseType = "SQLite"
+		startupCfg.DatabaseName = cfg.SQLiteDBPath
+		if debugMode {
+			log.Println("WARNING: Using SQLite database. This is NOT recommended for production!")
+		}
 	} else {
-		log.Println("[INFO] PostgreSQL connection established")
+		startupCfg.DatabaseType = "PostgreSQL"
+		startupCfg.DatabaseName = cfg.PostgresDB
+		if debugMode {
+			log.Println("[INFO] PostgreSQL connection established")
+		}
 	}
 
 	// Ensure database schema exists (creates tables if missing)
-	if err := models.EnsureSchema(db); err != nil {
-		log.Fatalf("[FATAL] Failed to initialize database schema: %v", err)
+	if err := models.EnsureSchema(db, debugMode); err != nil {
+		log.Fatalf("Failed to initialize database schema: %v", err)
 	}
 
 	redisClient := asynq.NewClient(redisAddr.AsynqOpt)
@@ -145,10 +177,13 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	// Initialize vault store
 	vaultStore := vaults.NewStore(db)
-	if vaultStore.IsEnabled() {
-		log.Println("[VAULTS] Vaults feature enabled")
-	} else {
-		log.Println("[VAULTS] Warning: RUNQY_VAULT_MASTER_KEY not set, vaults feature disabled")
+	startupCfg.VaultsEnabled = vaultStore.IsEnabled()
+	if debugMode {
+		if vaultStore.IsEnabled() {
+			log.Println("[VAULTS] Vaults feature enabled")
+		} else {
+			log.Println("[VAULTS] Warning: RUNQY_VAULT_MASTER_KEY not set, vaults feature disabled")
+		}
 	}
 
 	// Register asynq metrics exporter for Prometheus
@@ -156,7 +191,9 @@ func runServe(cmd *cobra.Command, args []string) {
 	defer inspector.Close()
 	metricsExporter := metrics.NewQueueMetricsCollector(inspector)
 	prometheus.MustRegister(metricsExporter)
-	log.Println("[METRICS] Prometheus metrics exporter registered at /metrics")
+	if debugMode {
+		log.Println("[METRICS] Prometheus metrics exporter registered at /metrics")
+	}
 
 	// Initialize queue worker store (database for configs, Redis for asynq)
 	qwStore := queueworker.NewStore(db, redisAddr.RDB)
@@ -165,7 +202,9 @@ func runServe(cmd *cobra.Command, args []string) {
 	var h *monitoring.HTTPHandler
 	if !disableUI {
 		authStore := auth.NewStore(db)
-		log.Println("[AUTH] Monitoring UI authentication enabled")
+		if debugMode {
+			log.Println("[AUTH] Monitoring UI authentication enabled")
+		}
 
 		h = monitoring.New(monitoring.Options{
 			RootPath:          "/monitoring",
@@ -178,15 +217,18 @@ func runServe(cmd *cobra.Command, args []string) {
 			PrometheusAddress: os.Getenv("PROMETHEUS_ADDRESS"),
 		})
 		defer h.Close()
-	} else {
+	} else if debugMode {
 		log.Println("[UI] Monitoring dashboard disabled (--no-ui)")
 	}
 
 	// Clean up stale workers from previous runs
 	ctx := context.Background()
 	if deleted, err := qwStore.CleanupStaleWorkers(ctx); err != nil {
-		log.Printf("[WARN] Redis connection failed (%s:%s): unable to cleanup stale workers. Ensure Redis is running and check REDIS_HOST/REDIS_PORT configuration.", cfg.RedisHost, cfg.RedisPort)
-	} else if deleted > 0 {
+		startupCfg.RedisConnected = false
+		if debugMode {
+			log.Printf("[WARN] Redis connection failed (%s:%s): unable to cleanup stale workers", cfg.RedisHost, cfg.RedisPort)
+		}
+	} else if deleted > 0 && debugMode {
 		log.Printf("[CLEANUP] Removed %d stale worker entries", deleted)
 	}
 
@@ -196,21 +238,25 @@ func runServe(cmd *cobra.Command, args []string) {
 		var gitErr error
 		gitLoader, gitErr = queueworker.NewGitLoader(cfg)
 		if gitErr != nil {
-			log.Fatalf("[FATAL] Failed to initialize git loader: %v", gitErr)
+			log.Fatalf("Failed to initialize git loader: %v", gitErr)
 		}
 		if cloneErr := gitLoader.Clone(); cloneErr != nil {
-			log.Fatalf("[FATAL] Failed to clone config repo: %v", cloneErr)
+			log.Fatalf("Failed to clone config repo: %v", cloneErr)
 		}
 		defer gitLoader.Cleanup()
 
 		// Use git repo path instead of local dir
 		cfg.QueueWorkersDir = gitLoader.GetConfigPath()
-		log.Printf("[GIT-LOADER] Using configs from: %s", cfg.QueueWorkersDir)
+		if debugMode {
+			log.Printf("[GIT-LOADER] Using configs from: %s", cfg.QueueWorkersDir)
+		}
 	}
 
-	if _, err := api.LoadQueueWorkersAtStartup(qwStore, cfg.QueueWorkersDir); err != nil {
+	queuesLoaded, err := api.LoadQueueWorkersAtStartup(qwStore, cfg.QueueWorkersDir, debugMode)
+	if err != nil && debugMode {
 		log.Printf("[WARN] Failed to load queue workers: %v", err)
 	}
+	startupCfg.QueuesLoaded = len(queuesLoaded)
 
 	// Start config watcher if enabled
 	var configWatcher *watcher.ConfigWatcher
@@ -226,7 +272,9 @@ func runServe(cmd *cobra.Command, args []string) {
 			interval := time.Duration(cfg.ConfigWatchInterval) * time.Second
 			gitWatcher = watcher.NewGitWatcher(gitLoader.Pull, reloadFunc, interval)
 			if err := gitWatcher.Start(); err != nil {
-				log.Printf("[WARN] Failed to start git watcher: %v", err)
+				if debugMode {
+					log.Printf("[WARN] Failed to start git watcher: %v", err)
+				}
 				gitWatcher = nil
 			}
 		} else {
@@ -234,15 +282,45 @@ func runServe(cmd *cobra.Command, args []string) {
 			var watchErr error
 			configWatcher, watchErr = watcher.NewConfigWatcher(cfg.QueueWorkersDir, reloadFunc)
 			if watchErr != nil {
-				log.Printf("[WARN] Failed to create config watcher: %v", watchErr)
+				if debugMode {
+					log.Printf("[WARN] Failed to create config watcher: %v", watchErr)
+				}
 			} else {
 				if startErr := configWatcher.Start(); startErr != nil {
-					log.Printf("[WARN] Failed to start config watcher: %v", startErr)
+					if debugMode {
+						log.Printf("[WARN] Failed to start config watcher: %v", startErr)
+					}
 					configWatcher = nil
 				}
 			}
 		}
 	}
+
+	// Health check endpoints (no auth required)
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":    "ok",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
+
+	router.GET("/healthz", func(c *gin.Context) {
+		// Kubernetes-style health check with dependency status
+		redisOK := redisAddr.RDB.Ping(c).Err() == nil
+
+		status := "ok"
+		httpCode := 200
+		if !redisOK {
+			status = "degraded"
+			httpCode = 503
+		}
+
+		c.JSON(httpCode, gin.H{
+			"status":    status,
+			"redis":     redisOK,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
 
 	api.SetupAPI(router, qwStore, cfg.QueueWorkersDir, cfg, redisAddr.AsynqOpt)
 	api.SetupVaultsAPI(router, vaultStore)
@@ -271,18 +349,20 @@ func runServe(cmd *cobra.Command, args []string) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 
+	// Print startup banner
+	PrintStartupBanner(startupCfg)
+
 	// Start the HTTP server
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.Printf("[INFO] HTTP server starting on :%s", cfg.HTTPPort)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("HTTP server error: %v", err)
 		}
 	}()
 
 	<-quit
-	log.Println("[INFO] Shutdown signal received")
+	log.Println("Shutdown signal received")
 
 	// Stop watchers
 	if configWatcher != nil {
@@ -301,5 +381,7 @@ func runServe(cmd *cobra.Command, args []string) {
 	}
 
 	wg.Wait()
-	log.Println("[INFO] All goroutines exited")
+	if debugMode {
+		log.Println("[INFO] All goroutines exited")
+	}
 }

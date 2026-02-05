@@ -104,7 +104,7 @@ func init() {
 	taskEnqueueCmd.MarkFlagRequired("queue")
 
 	// List flags
-	taskListCmd.Flags().StringVarP(&taskState, "state", "s", "pending", "Task state (pending, active, scheduled, retry, archived, completed)")
+	taskListCmd.Flags().StringVar(&taskState, "state", "pending", "Task state (pending, active, scheduled, retry, archived, completed)")
 	taskListCmd.Flags().IntVarP(&taskLimit, "limit", "l", 10, "Maximum number of tasks to show")
 }
 
