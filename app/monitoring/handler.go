@@ -120,7 +120,7 @@ func (h *HTTPHandler) RootPath() string {
 	return h.rootPath
 }
 
-//go:embed ui/build/*
+//go:embed all:ui/build
 var staticContents embed.FS
 
 func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspector, db *sqlx.DB) *mux.Router {

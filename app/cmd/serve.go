@@ -39,6 +39,7 @@ var (
 	cloneDir      string
 	watchInterval int
 	useSQLite     bool
+	disableUI     bool
 )
 
 // serveCmd represents the serve command
@@ -68,6 +69,7 @@ func init() {
 	serveCmd.Flags().StringVar(&cloneDir, "clone-dir", "", "Directory to clone repo into (default: downloads)")
 	serveCmd.Flags().IntVar(&watchInterval, "watch-interval", 0, "Git polling interval in seconds (default: 60)")
 	serveCmd.Flags().BoolVar(&useSQLite, "sqlite", false, "Use SQLite instead of PostgreSQL (for testing, NOT recommended for production)")
+	serveCmd.Flags().BoolVar(&disableUI, "no-ui", false, "Disable the monitoring web dashboard")
 }
 
 func runServe(cmd *cobra.Command, args []string) {
@@ -159,20 +161,26 @@ func runServe(cmd *cobra.Command, args []string) {
 	// Initialize queue worker store (database for configs, Redis for asynq)
 	qwStore := queueworker.NewStore(db, redisAddr.RDB)
 
-	// Initialize auth store for monitoring UI authentication
-	authStore := auth.NewStore(db)
-	log.Println("[AUTH] Monitoring UI authentication enabled")
+	// Initialize monitoring UI (unless disabled)
+	var h *monitoring.HTTPHandler
+	if !disableUI {
+		authStore := auth.NewStore(db)
+		log.Println("[AUTH] Monitoring UI authentication enabled")
 
-	h := monitoring.New(monitoring.Options{
-		RootPath:          "/monitoring",
-		RedisConnOpt:      redisAddr.AsynqOpt,
-		ReadOnly:          os.Getenv("ASYNQ_READ_ONLY") == "true",
-		DB:                db,
-		VaultStore:        vaultStore,
-		QueueStore:        qwStore,
-		AuthStore:         authStore,
-		PrometheusAddress: os.Getenv("PROMETHEUS_ADDRESS"),
-	})
+		h = monitoring.New(monitoring.Options{
+			RootPath:          "/monitoring",
+			RedisConnOpt:      redisAddr.AsynqOpt,
+			ReadOnly:          os.Getenv("ASYNQ_READ_ONLY") == "true",
+			DB:                db,
+			VaultStore:        vaultStore,
+			QueueStore:        qwStore,
+			AuthStore:         authStore,
+			PrometheusAddress: os.Getenv("PROMETHEUS_ADDRESS"),
+		})
+		defer h.Close()
+	} else {
+		log.Println("[UI] Monitoring dashboard disabled (--no-ui)")
+	}
 
 	// Clean up stale workers from previous runs
 	ctx := context.Background()
@@ -245,12 +253,13 @@ func runServe(cmd *cobra.Command, args []string) {
 	// Prometheus metrics endpoint
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	// Redirect root to monitoring dashboard
-	router.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusMovedPermanently, "/monitoring")
-	})
-
-	router.Any("/monitoring/*a", gin.WrapH(h))
+	// Redirect root to monitoring dashboard (unless disabled)
+	if !disableUI {
+		router.GET("/", func(c *gin.Context) {
+			c.Redirect(http.StatusMovedPermanently, "/monitoring")
+		})
+		router.Any("/monitoring/*a", gin.WrapH(h))
+	}
 
 	// Create HTTP server
 	srv := &http.Server{
