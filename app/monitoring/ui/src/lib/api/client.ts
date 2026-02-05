@@ -1,4 +1,5 @@
 import { base } from '$app/paths';
+import { browser } from '$app/environment';
 import type {
 	Queue,
 	QueueInfo,
@@ -22,14 +23,32 @@ import type {
 
 const BASE_URL = `${base}/api`;
 
+// Custom error class for auth errors
+export class AuthError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'AuthError';
+	}
+}
+
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 	const response = await fetch(url, {
 		...options,
+		credentials: 'include',
 		headers: {
 			'Content-Type': 'application/json',
 			...options?.headers
 		}
 	});
+
+	// Handle 401 Unauthorized - redirect to login
+	if (response.status === 401) {
+		if (browser) {
+			// Trigger a re-check of auth status which will redirect to login
+			window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+		}
+		throw new AuthError('Unauthorized');
+	}
 
 	if (!response.ok) {
 		const errorText = await response.text();

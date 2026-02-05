@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
+	import { goto } from '$app/navigation';
 	import { settings } from '$lib/stores/settings';
+	import { authStore } from '$lib/stores/auth';
+
+	async function handleLogout() {
+		await authStore.logout();
+		goto(`${base}/login`);
+	}
 
 	const navItems = [
 		{
@@ -103,6 +110,43 @@
 			</a>
 		{/each}
 	</nav>
+
+	<!-- User section -->
+	{#if $authStore.email}
+		<div class="p-3 border-t" style="border-color: inherit;">
+			<div class="flex items-center gap-3 px-4 py-2 {collapsed ? 'justify-center' : ''}">
+				<div class="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+					{$authStore.email.charAt(0).toUpperCase()}
+				</div>
+				{#if !collapsed}
+					<div class="flex-1 min-w-0">
+						<p class="text-sm font-medium truncate">{$authStore.email}</p>
+						<p class="text-xs text-surface-500">Admin</p>
+					</div>
+				{/if}
+			</div>
+			<button
+				type="button"
+				class="w-full flex items-center gap-4 px-4 py-3 mt-1 rounded-lg text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700 {collapsed
+					? 'justify-center'
+					: ''}"
+				onclick={handleLogout}
+				title={collapsed ? 'Logout' : undefined}
+			>
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+					/>
+				</svg>
+				{#if !collapsed}
+					<span class="text-sm">Logout</span>
+				{/if}
+			</button>
+		</div>
+	{/if}
 
 	<!-- Collapse toggle -->
 	<div class="p-3 border-t" style="border-color: inherit;">

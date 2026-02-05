@@ -1,0 +1,98 @@
+package auth
+
+import (
+	"crypto/rand"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+const (
+	// TokenExpiry is the default token expiration time (7 days)
+	TokenExpiry = 7 * 24 * time.Hour
+	// CookieName is the name of the auth cookie
+	CookieName = "runqy_auth"
+)
+
+// Claims represents the JWT claims for authentication.
+type Claims struct {
+	Email string `json:"email"`
+	jwt.RegisteredClaims
+}
+
+// JWTManager handles JWT token generation and validation.
+type JWTManager struct {
+	secret []byte
+}
+
+var jwtManager *JWTManager
+
+// GetJWTManager returns the singleton JWT manager.
+// Initializes with RUNQY_JWT_SECRET or auto-generates a secret.
+func GetJWTManager() *JWTManager {
+	if jwtManager == nil {
+		secret := os.Getenv("RUNQY_JWT_SECRET")
+		if secret == "" {
+			// Auto-generate a random secret
+			randomBytes := make([]byte, 32)
+			if _, err := rand.Read(randomBytes); err != nil {
+				log.Fatalf("[AUTH] Failed to generate JWT secret: %v", err)
+			}
+			secret = base64.StdEncoding.EncodeToString(randomBytes)
+			log.Println("[AUTH] Warning: RUNQY_JWT_SECRET not set, using auto-generated secret (tokens will be invalid after restart)")
+		}
+		jwtManager = &JWTManager{
+			secret: []byte(secret),
+		}
+	}
+	return jwtManager
+}
+
+// GenerateToken creates a new JWT token for the given email.
+func (m *JWTManager) GenerateToken(email string) (string, time.Time, error) {
+	expiresAt := time.Now().Add(TokenExpiry)
+
+	claims := &Claims{
+		Email: email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "runqy",
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(m.secret)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("failed to sign token: %w", err)
+	}
+
+	return tokenString, expiresAt, nil
+}
+
+// ValidateToken validates a JWT token and returns the claims if valid.
+func (m *JWTManager) ValidateToken(tokenString string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		// Validate signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return m.secret, nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	return claims, nil
+}

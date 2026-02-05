@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Publikey/runqy/api"
+	"github.com/Publikey/runqy/auth"
 	_ "github.com/Publikey/runqy/docs"
 	"github.com/Publikey/runqy/models"
 	"github.com/Publikey/runqy/monitoring"
@@ -158,6 +159,10 @@ func runServe(cmd *cobra.Command, args []string) {
 	// Initialize queue worker store (database for configs, Redis for asynq)
 	qwStore := queueworker.NewStore(db, redisAddr.RDB)
 
+	// Initialize auth store for monitoring UI authentication
+	authStore := auth.NewStore(db)
+	log.Println("[AUTH] Monitoring UI authentication enabled")
+
 	h := monitoring.New(monitoring.Options{
 		RootPath:          "/monitoring",
 		RedisConnOpt:      redisAddr.AsynqOpt,
@@ -165,6 +170,7 @@ func runServe(cmd *cobra.Command, args []string) {
 		DB:                db,
 		VaultStore:        vaultStore,
 		QueueStore:        qwStore,
+		AuthStore:         authStore,
 		PrometheusAddress: os.Getenv("PROMETHEUS_ADDRESS"),
 	})
 
