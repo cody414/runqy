@@ -203,32 +203,12 @@ func AddTask(qwConfigDir string) gin.HandlerFunc {
 					return
 				}
 
-				// Validate required fields and types, and build filtered payload
-				filtered := make(map[string]interface{})
-				for _, field := range matched.Input {
-					val, ok := dataMap[field.Name]
-					if !ok {
-						c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{fmt.Sprintf("%s is required", field.Name)}})
-						return
-					}
-
-					if !checkAllowedType(val, field.Type) {
-						c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{fmt.Sprintf("%s has invalid type", field.Name)}})
-						return
-					}
-
-					// If the field expects an int but JSON gave float64, convert to int64
-					if contains(field.Type, "int") {
-						if f, ok := val.(float64); ok {
-							// use int64 for integers
-							filtered[field.Name] = int64(f)
-							continue
-						}
-					}
-					filtered[field.Name] = val
+				filtered, err := validateFields(dataMap, matched.Input)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
+					return
 				}
 
-				// Build typed payload (flat map) to send
 				payloadToSend = models.TypedPayload(filtered)
 			}
 			// if matched == nil, fallthrough and parse into TypedPayload below
@@ -329,4 +309,51 @@ func contains(arr []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// validateFields validates a data map against a list of FieldSchema definitions.
+// It passes through all fields from the input, then validates and applies defaults
+// for schema-defined fields.
+func validateFields(dataMap map[string]interface{}, fields []queueworker.FieldSchema) (map[string]interface{}, error) {
+	// Start with all fields (pass-through)
+	filtered := make(map[string]interface{})
+	for k, v := range dataMap {
+		filtered[k] = v
+	}
+
+	for _, field := range fields {
+		val, exists := filtered[field.Name]
+
+		if !exists {
+			if field.IsRequired() {
+				return nil, fmt.Errorf("%s is required", field.Name)
+			}
+			// Optional: apply default if defined
+			if field.Default != nil {
+				defVal := field.Default
+				// Handle float64 -> int64 conversion for defaults (JSON round-trip)
+				if contains(field.Type, "int") {
+					if f, ok := defVal.(float64); ok {
+						defVal = int64(f)
+					}
+				}
+				filtered[field.Name] = defVal
+			}
+			continue
+		}
+
+		// Validate type
+		if !checkAllowedType(val, field.Type) {
+			return nil, fmt.Errorf("%s has invalid type", field.Name)
+		}
+
+		// Convert float64 -> int64 for int-typed fields
+		if contains(field.Type, "int") {
+			if f, ok := val.(float64); ok {
+				filtered[field.Name] = int64(f)
+			}
+		}
+	}
+
+	return filtered, nil
 }
