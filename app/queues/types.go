@@ -79,8 +79,21 @@ type QueueYAML struct {
 
 // FieldSchema describes a single named field and the allowed types
 type FieldSchema struct {
-	Name string   `yaml:"name"`
-	Type []string `yaml:"type"`
+	Name        string      `yaml:"name" json:"name"`
+	Type        []string    `yaml:"type" json:"type"`
+	Required    *bool       `yaml:"required,omitempty" json:"required,omitempty"`
+	Default     interface{} `yaml:"default,omitempty" json:"default,omitempty"`
+	Description string      `yaml:"description,omitempty" json:"description,omitempty"`
+}
+
+// IsRequired returns whether this field is required.
+// For backward compatibility, fields without an explicit "required" setting
+// are treated as required.
+func (f *FieldSchema) IsRequired() bool {
+	if f.Required == nil {
+		return true
+	}
+	return *f.Required
 }
 
 // SubQueueYAML represents a sub-queue with its own name and priority
