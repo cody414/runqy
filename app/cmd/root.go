@@ -20,8 +20,9 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "runqy",
-	Short: "Distributed task queue system with server-driven bootstrap",
+	Use:     "runqy",
+	Short:   "Distributed task queue system with server-driven bootstrap",
+	Version: Version,
 	Long: `runqy is a distributed task queue system built on asynq.
 
 It provides a central server for worker registration, queue management,
@@ -51,9 +52,11 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	// Set custom version template to include git commit and build date
+	rootCmd.SetVersionTemplate(fmt.Sprintf("runqy version %s (commit: %s, built: %s)\n", Version, GitCommit, BuildDate))
+
 	// Global flags
 	rootCmd.PersistentFlags().StringP("redis-uri", "", "", "Redis URI (overrides REDIS_HOST/REDIS_PORT)")
-	rootCmd.PersistentFlags().BoolP("version", "v", false, "Print version information")
 
 	// Remote server mode flags
 	rootCmd.PersistentFlags().StringVarP(&serverURL, "server", "s", "", "Remote server URL (e.g., https://runqy.example.com:3000)")
