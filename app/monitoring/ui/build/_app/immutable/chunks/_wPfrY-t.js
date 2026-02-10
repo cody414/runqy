@@ -1,1 +1,0 @@
-import{a8 as o,j as u,a9 as _,h as t,C as g,o as i,aa as l,w as d,m,x as p}from"./CGyvg_bh.js";function E(n,r){let a=null,f=t;var s;if(t){a=m;for(var e=p(document.head);e!==null&&(e.nodeType!==g||e.data!==n);)e=i(e);if(e===null)l(!1);else{var y=i(e);e.remove(),d(y)}}t||(s=document.head.appendChild(o()));try{u(()=>r(s),_)}finally{f&&(l(!0),d(a))}}export{E as h};

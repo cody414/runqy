@@ -13,8 +13,8 @@ import (
 
 // QueueConfigListResponse is the response for listing queue configs
 type QueueConfigListResponse struct {
-	Queues []queueworker.QueueSummary `json:"queues"`
-	Count  int                        `json:"count"`
+	Queues []QueueConfigDetailResponse `json:"queues"`
+	Count  int                         `json:"count"`
 }
 
 // CreateQueueConfigRequest is the request body for creating a queue config
@@ -43,24 +43,27 @@ func newListQueueConfigsHandlerFunc(store *queueworker.Store) http.HandlerFunc {
 			return
 		}
 
-		// Get summary for each queue
-		summaries := make([]queueworker.QueueSummary, 0, len(queues))
+		// Get detail for each queue
+		details := make([]QueueConfigDetailResponse, 0, len(queues))
 		for _, q := range queues {
 			cfg, err := store.Get(r.Context(), q)
 			if err != nil || cfg == nil {
 				continue
 			}
-			summaries = append(summaries, queueworker.QueueSummary{
-				Name:     cfg.Name,
-				Priority: cfg.Priority,
-				Provider: cfg.Provider,
+			details = append(details, QueueConfigDetailResponse{
+				Name:       cfg.Name,
+				Priority:   cfg.Priority,
+				Provider:   cfg.Provider,
+				Deployment: cfg.Deployment,
+				CreatedAt:  cfg.CreatedAt,
+				UpdatedAt:  cfg.UpdatedAt,
 			})
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(QueueConfigListResponse{
-			Queues: summaries,
-			Count:  len(summaries),
+			Queues: details,
+			Count:  len(details),
 		})
 	}
 }

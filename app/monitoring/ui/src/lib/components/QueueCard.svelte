@@ -5,13 +5,14 @@
 	interface Props {
 		queue: Queue;
 		workers?: Worker[];
+		redisStorage?: boolean;
 		onClick?: () => void;
 		onPause?: () => void;
 		onResume?: () => void;
 		onDelete?: () => void;
 	}
 
-	let { queue, workers = [], onClick, onPause, onResume, onDelete }: Props = $props();
+	let { queue, workers = [], redisStorage = false, onClick, onPause, onResume, onDelete }: Props = $props();
 
 	let menuOpen = $state(false);
 
@@ -49,7 +50,7 @@
 <svelte:window onclick={handleClickOutside} />
 
 <div
-	class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 w-full text-left hover:ring-2 hover:ring-primary-500/50 transition-all cursor-pointer {queue.paused ? 'opacity-75' : ''}"
+	class="rq-card rq-card-interactive p-5 w-full text-left {queue.paused ? 'opacity-75' : ''}"
 	onclick={onClick}
 	onkeydown={(e) => e.key === 'Enter' && onClick?.()}
 	role="button"
@@ -63,6 +64,11 @@
 			{:else}
 				<span class="badge preset-filled-success-500 text-xs">Running</span>
 			{/if}
+			{#if redisStorage}
+				<span class="badge preset-filled-success-500 text-xs">Redis</span>
+			{:else}
+				<span class="badge preset-filled-surface-500 text-xs">None</span>
+			{/if}
 		</div>
 		<div class="flex items-center gap-2">
 			<div class="text-right text-xs text-surface-500">
@@ -74,7 +80,7 @@
 				<div class="relative">
 					<button
 						type="button"
-						class="p-1.5 rounded hover:bg-surface-200 dark:hover:bg-surface-600 transition-colors"
+						class="p-1.5 rounded hover:bg-surface-700 transition-colors"
 						onclick={handleMenuClick}
 						title="Actions"
 					>
@@ -86,14 +92,14 @@
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<div
-							class="absolute right-0 top-full mt-1 w-36 bg-white dark:bg-surface-800 rounded-lg shadow-lg border border-surface-200 dark:border-surface-700 py-1 z-10"
+							class="absolute right-0 top-full mt-1 w-36 rounded-lg shadow-lg py-1 z-10 rq-card"
 							onclick={(e) => e.stopPropagation()}
 							role="menu"
 						>
 							{#if queue.paused && onResume}
 								<button
 									type="button"
-									class="w-full px-3 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-700 flex items-center gap-2 text-success-600"
+									class="w-full px-3 py-2 text-left text-sm hover:bg-surface-700 flex items-center gap-2 text-success-500"
 									onclick={(e) => handleAction(onResume, e)}
 								>
 									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +111,7 @@
 							{:else if !queue.paused && onPause}
 								<button
 									type="button"
-									class="w-full px-3 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-700 flex items-center gap-2 text-warning-600"
+									class="w-full px-3 py-2 text-left text-sm hover:bg-surface-700 flex items-center gap-2 text-warning-500"
 									onclick={(e) => handleAction(onPause, e)}
 								>
 									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,7 +123,7 @@
 							{#if onDelete}
 								<button
 									type="button"
-									class="w-full px-3 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-700 flex items-center gap-2 text-error-600"
+									class="w-full px-3 py-2 text-left text-sm hover:bg-surface-700 flex items-center gap-2 text-error-500"
 									onclick={(e) => handleAction(onDelete, e)}
 								>
 									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,7 +142,7 @@
 	<!-- Workers listening on this queue -->
 	<div class="mb-4">
 		{#if listeningWorkers.length === 0}
-			<div class="warning-badge text-xs px-3 py-2 rounded flex items-center gap-2">
+			<div class="text-xs px-3 py-2 rounded flex items-center gap-2 bg-warning-500/10 text-warning-400 border border-warning-500/20">
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
 				</svg>
@@ -158,30 +164,30 @@
 	</div>
 
 	<div class="grid grid-cols-3 gap-3 text-center">
-		<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+		<div class="rq-metric-box">
 			<div class="text-xl font-bold text-warning-500">{formatNumber(queue.pending || 0)}</div>
 			<div class="text-xs text-surface-500 mt-1">Pending</div>
 		</div>
-		<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+		<div class="rq-metric-box">
 			<div class="text-xl font-bold text-success-500">{formatNumber(queue.active || 0)}</div>
 			<div class="text-xs text-surface-500 mt-1">Active</div>
 		</div>
-		<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+		<div class="rq-metric-box">
 			<div class="text-xl font-bold text-tertiary-500">{formatNumber(queue.completed || 0)}</div>
 			<div class="text-xs text-surface-500 mt-1">Completed</div>
 		</div>
 	</div>
 
 	<div class="grid grid-cols-3 gap-3 text-center mt-4">
-		<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+		<div class="rq-metric-box">
 			<div class="text-xl font-bold text-orange-500">{formatNumber(queue.retry || 0)}</div>
 			<div class="text-xs text-surface-500 mt-1">Retry</div>
 		</div>
-		<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+		<div class="rq-metric-box">
 			<div class="text-xl font-bold text-surface-500">{formatNumber(queue.archived || 0)}</div>
 			<div class="text-xs text-surface-500 mt-1">Archived</div>
 		</div>
-		<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+		<div class="rq-metric-box">
 			<div class="text-xl font-bold text-error-500">{formatNumber(queue.failed || 0)}</div>
 			<div class="text-xs text-surface-500 mt-1">Failed</div>
 		</div>

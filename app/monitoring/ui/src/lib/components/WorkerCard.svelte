@@ -3,7 +3,7 @@
 	import { formatRelativeTime, truncateId } from '$lib/utils/format';
 	import { workersStore } from '$lib/stores/workers';
 
-	let { worker }: { worker: Worker } = $props();
+	let { worker, onclick }: { worker: Worker; onclick?: () => void } = $props();
 
 	// Parse queues string like "map[queue1:5 queue2:5]" to array of {name, priority}
 	function parseQueues(queuesStr: string): { name: string; priority: number }[] {
@@ -35,9 +35,31 @@
 	let queues = $derived(parseQueues(worker.queues));
 	let startedDate = $derived(new Date(worker.started_at * 1000));
 	let lastBeatDate = $derived(new Date(worker.last_beat * 1000));
+
+	// Metrics helpers
+	let m = $derived(worker.metrics);
+	let memPercent = $derived(m && m.memory_total_bytes > 0 ? (m.memory_used_bytes / m.memory_total_bytes) * 100 : 0);
+
+	function formatBytes(bytes: number): string {
+		if (bytes < 1024) return bytes + ' B';
+		if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+		if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+		return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+	}
+
+	function barColor(percent: number): string {
+		if (percent >= 90) return 'bg-error-500';
+		if (percent >= 70) return 'bg-warning-500';
+		return 'bg-success-500';
+	}
 </script>
 
-<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4">
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="rq-card p-5 {onclick ? 'rq-card-interactive' : ''}"
+	onclick={onclick}
+>
 	<div class="flex items-start justify-between mb-4">
 		<div>
 			<h3 class="font-semibold font-mono text-sm" title={worker.worker_id}>
@@ -62,6 +84,46 @@
 		</div>
 	</div>
 
+	{#if m}
+		<div class="mb-4 space-y-2">
+			<!-- CPU -->
+			<div>
+				<div class="flex justify-between text-xs text-surface-500 mb-0.5">
+					<span>CPU</span>
+					<span>{m.cpu_percent.toFixed(1)}%</span>
+				</div>
+				<div class="rq-progress-track">
+					<div class="rq-progress-bar {barColor(m.cpu_percent)}" style="width: {Math.min(m.cpu_percent, 100)}%"></div>
+				</div>
+			</div>
+			<!-- RAM -->
+			<div>
+				<div class="flex justify-between text-xs text-surface-500 mb-0.5">
+					<span>RAM</span>
+					<span>{formatBytes(m.memory_used_bytes)} / {formatBytes(m.memory_total_bytes)}</span>
+				</div>
+				<div class="rq-progress-track">
+					<div class="rq-progress-bar {barColor(memPercent)}" style="width: {Math.min(memPercent, 100)}%"></div>
+				</div>
+			</div>
+			<!-- GPUs -->
+			{#if m.gpus && m.gpus.length > 0}
+				{#each m.gpus as gpu (gpu.index)}
+					{@const gpuMemPercent = gpu.memory_total_mb > 0 ? (gpu.memory_used_mb / gpu.memory_total_mb) * 100 : 0}
+					<div>
+						<div class="flex justify-between text-xs text-surface-500 mb-0.5">
+							<span title={gpu.name}>GPU {gpu.index}</span>
+							<span>{gpu.utilization_percent.toFixed(0)}% &middot; {gpu.memory_used_mb}/{gpu.memory_total_mb} MB &middot; {gpu.temperature_c}&deg;C</span>
+						</div>
+						<div class="rq-progress-track">
+							<div class="rq-progress-bar {barColor(gpu.utilization_percent)}" style="width: {Math.min(gpu.utilization_percent, 100)}%"></div>
+						</div>
+					</div>
+				{/each}
+			{/if}
+		</div>
+	{/if}
+
 	<div class="mb-4">
 		<div class="text-xs text-surface-500 mb-1">Queues</div>
 		<div class="flex flex-wrap gap-1">
@@ -81,7 +143,7 @@
 		</div>
 	</div>
 
-	<div class="border-t border-surface-300 dark:border-surface-600 pt-4 space-y-2 text-xs text-surface-500">
+	<div class="pt-4 space-y-2 text-xs text-surface-500" style="border-top: 1px solid var(--runqy-border-subtle);">
 		<div class="flex justify-between">
 			<span>Started:</span>
 			<span>{formatRelativeTime(startedDate)}</span>

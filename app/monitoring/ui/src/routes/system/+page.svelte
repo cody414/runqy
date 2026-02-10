@@ -55,14 +55,14 @@
 	<title>System - runqy Monitor</title>
 </svelte:head>
 
-<div class="p-6 space-y-6">
+<div class="rq-page space-y-8">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold">System</h1>
+			<h1 class="rq-page-title">System</h1>
 			<p class="text-surface-500">Infrastructure and connection status</p>
 		</div>
-		<button type="button" class="btn preset-filled-primary-500 {refreshing ? 'refresh-spinning' : ''}" onclick={handleRefresh}>
+		<button type="button" class="rq-btn-primary {refreshing ? 'refresh-spinning' : ''}" onclick={handleRefresh}>
 			<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path
 					stroke-linecap="round"
@@ -77,7 +77,7 @@
 
 	<!-- Error State -->
 	{#if error}
-		<div class="card p-4 preset-outlined-error-500">
+		<div class="rq-card p-4">
 			<p class="text-error-500">{error}</p>
 		</div>
 	{/if}
@@ -85,7 +85,7 @@
 	<!-- Status Cards -->
 	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 		<!-- Redis Status -->
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
+		<div class="rq-card p-6">
 			<div class="flex items-center justify-between mb-4">
 				<h3 class="text-lg font-semibold flex items-center gap-2">
 					<svg class="w-5 h-5 text-error-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,7 +137,7 @@
 		</div>
 
 		<!-- Database Status -->
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
+		<div class="rq-card p-6">
 			<div class="flex items-center justify-between mb-4">
 				<h3 class="text-lg font-semibold flex items-center gap-2">
 					<svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,7 +201,7 @@
 
 	<!-- Memory Info -->
 	{#if redisInfo}
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
+		<div class="rq-card p-6">
 			<h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
 				<svg class="w-5 h-5 text-warning-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
@@ -214,19 +214,19 @@
 				Redis Memory
 			</h3>
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-				<div class="text-center p-4 rounded bg-surface-100 dark:bg-surface-700">
+				<div class="rq-metric-box text-center">
 					<div class="text-2xl font-bold text-primary-500">{redisInfo.info.used_memory_human}</div>
 					<div class="text-xs text-surface-500">Used Memory</div>
 				</div>
-				<div class="text-center p-4 rounded bg-surface-100 dark:bg-surface-700">
+				<div class="rq-metric-box text-center">
 					<div class="text-2xl font-bold text-warning-500">{redisInfo.info.used_memory_peak_human}</div>
 					<div class="text-xs text-surface-500">Peak Memory</div>
 				</div>
-				<div class="text-center p-4 rounded bg-surface-100 dark:bg-surface-700">
+				<div class="rq-metric-box text-center">
 					<div class="text-2xl font-bold text-success-500">{redisInfo.info.connected_clients}</div>
 					<div class="text-xs text-surface-500">Clients</div>
 				</div>
-				<div class="text-center p-4 rounded bg-surface-100 dark:bg-surface-700">
+				<div class="rq-metric-box text-center">
 					<div class="text-2xl font-bold">{redisInfo.info.uptime_in_days}</div>
 					<div class="text-xs text-surface-500">Uptime (days)</div>
 				</div>
@@ -235,7 +235,7 @@
 
 		<!-- Cluster Info (if enabled) -->
 		{#if redisInfo.cluster}
-			<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
+			<div class="rq-card p-6">
 				<h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
 					<svg class="w-5 h-5 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -248,25 +248,25 @@
 					Cluster
 				</h3>
 				<div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-					<div class="text-center p-4 rounded bg-surface-100 dark:bg-surface-700">
+					<div class="rq-metric-box text-center">
 						<div class="text-lg font-bold {redisInfo.cluster.cluster_state === 'ok' ? 'text-success-500' : 'text-error-500'}">
 							{redisInfo.cluster.cluster_state}
 						</div>
 						<div class="text-xs text-surface-500">State</div>
 					</div>
-					<div class="text-center p-4 rounded bg-surface-100 dark:bg-surface-700">
+					<div class="rq-metric-box text-center">
 						<div class="text-lg font-bold">{redisInfo.cluster.cluster_slots_assigned}</div>
 						<div class="text-xs text-surface-500">Slots Assigned</div>
 					</div>
-					<div class="text-center p-4 rounded bg-surface-100 dark:bg-surface-700">
+					<div class="rq-metric-box text-center">
 						<div class="text-lg font-bold">{redisInfo.cluster.cluster_slots_ok}</div>
 						<div class="text-xs text-surface-500">Slots OK</div>
 					</div>
-					<div class="text-center p-4 rounded bg-surface-100 dark:bg-surface-700">
+					<div class="rq-metric-box text-center">
 						<div class="text-lg font-bold">{redisInfo.cluster.cluster_known_nodes}</div>
 						<div class="text-xs text-surface-500">Known Nodes</div>
 					</div>
-					<div class="text-center p-4 rounded bg-surface-100 dark:bg-surface-700">
+					<div class="rq-metric-box text-center">
 						<div class="text-lg font-bold">{redisInfo.cluster.cluster_size}</div>
 						<div class="text-xs text-surface-500">Cluster Size</div>
 					</div>
@@ -275,11 +275,11 @@
 		{/if}
 
 		<!-- Raw Info -->
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
+		<div class="rq-card p-6">
 			<details>
 				<summary class="cursor-pointer text-lg font-semibold">Raw Redis Info</summary>
 				<pre
-					class="mt-4 p-4 rounded text-sm font-mono overflow-x-auto max-h-96 scrollbar-thin bg-surface-100 dark:bg-surface-700">{redisInfo.raw_info}</pre>
+					class="mt-4 p-4 rounded text-sm font-mono overflow-x-auto max-h-96 scrollbar-thin bg-surface-900 text-surface-100">{redisInfo.raw_info}</pre>
 			</details>
 		</div>
 	{/if}

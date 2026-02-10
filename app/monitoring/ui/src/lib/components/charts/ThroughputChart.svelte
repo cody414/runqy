@@ -104,7 +104,7 @@
 	});
 </script>
 
-<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4">
+<div class="rq-card p-5">
 	<div class="flex items-center justify-between mb-4 flex-wrap gap-2">
 		<h3 class="text-lg font-semibold">Task History</h3>
 		<div class="flex items-center gap-3">
@@ -126,9 +126,9 @@
 				{#each timeRanges as { key, label }}
 					<button
 						type="button"
-						class="btn btn-sm {$queueStatsStore.selectedTimeRange === key
-							? 'preset-filled-primary-500'
-							: 'preset-outlined-surface-500'}"
+						class="{$queueStatsStore.selectedTimeRange === key
+							? 'rq-pill-active'
+							: 'rq-pill'}"
 						onclick={() => selectTimeRange(key)}
 					>
 						{label}
@@ -217,8 +217,8 @@
 					{/each}
 
 					<!-- Axes -->
-					<Axis placement="bottom" format={formatDate} ticks={6} />
-					<Axis placement="left" format={formatNumber} ticks={5} />
+					<Axis placement="bottom" format={formatDate} ticks={6} classes={{ tickLabel: '!fill-[#9ca3af] !stroke-[#111118]' }} />
+					<Axis placement="left" format={formatNumber} ticks={5} classes={{ tickLabel: '!fill-[#9ca3af] !stroke-[#111118]' }} />
 
 					<!-- Highlight on hover -->
 					<Highlight lines />

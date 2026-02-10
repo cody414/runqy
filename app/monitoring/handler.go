@@ -227,6 +227,8 @@ func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspecto
 
 	// Workers endpoints (external workers from asynq:workers:* keys).
 	api.HandleFunc("/workers", newListWorkersHandlerFunc(rc)).Methods("GET")
+	api.HandleFunc("/workers/{workerId}/logs", newGetWorkerLogsHandlerFunc(rc)).Methods("GET")
+	api.HandleFunc("/workers/{workerId}/logs/stream", newWorkerLogStreamHandlerFunc(rc)).Methods("GET")
 
 	// Scheduler Entry endpoints.
 	api.HandleFunc("/scheduler_entries", newListSchedulerEntriesHandlerFunc(inspector, payloadFmt)).Methods("GET")

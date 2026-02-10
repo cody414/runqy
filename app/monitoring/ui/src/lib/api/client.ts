@@ -16,7 +16,6 @@ import type {
 	VaultDetail,
 	MetricsResponse,
 	QueueStatsResponse,
-	QueueConfigSummary,
 	QueueConfigDetail,
 	DeploymentConfig
 } from './types';
@@ -74,7 +73,8 @@ export async function getQueues(): Promise<{ queues: Queue[] }> {
 }
 
 export async function getQueueInfo(qname: string): Promise<QueueInfo> {
-	return fetchJson(`${BASE_URL}/queues/${encodeURIComponent(qname)}`);
+	const data = await fetchJson<{ current: QueueInfo }>(`${BASE_URL}/queues/${encodeURIComponent(qname)}`);
+	return data.current;
 }
 
 export async function pauseQueue(qname: string): Promise<void> {
@@ -199,6 +199,10 @@ export async function getWorkers(): Promise<{ workers: Worker[] }> {
 
 export async function getWorkerInfo(workerId: string): Promise<WorkerInfo> {
 	return fetchJson(`${BASE_URL}/workers/${encodeURIComponent(workerId)}`);
+}
+
+export async function getWorkerLogs(workerId: string, n: number = 200): Promise<{ lines: string[]; count: number }> {
+	return fetchJson(`${BASE_URL}/workers/${encodeURIComponent(workerId)}/logs?n=${n}`);
 }
 
 // Server API
@@ -339,7 +343,7 @@ export async function deleteVaultEntry(
 }
 
 // Queue Config API
-export async function getQueueConfigs(): Promise<{ queues: QueueConfigSummary[]; count: number }> {
+export async function getQueueConfigs(): Promise<{ queues: QueueConfigDetail[]; count: number }> {
 	return fetchJson(`${BASE_URL}/queue_configs`);
 }
 

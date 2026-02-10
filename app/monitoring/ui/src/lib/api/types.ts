@@ -64,6 +64,31 @@ export interface Worker {
 	queues: string;      // String like "map[queue1:5 queue2:5]"
 	status: string;
 	is_stale: boolean;
+	metrics?: WorkerMetrics;
+}
+
+export interface WorkerMetrics {
+	cpu_percent: number;
+	memory_used_bytes: number;
+	memory_total_bytes: number;
+	gpus?: GPUMetrics[];
+	collected_at: number;
+}
+
+export interface GPUMetrics {
+	index: number;
+	name: string;
+	utilization_percent: number;
+	memory_used_mb: number;
+	memory_total_mb: number;
+	temperature_c: number;
+}
+
+export interface LogLine {
+	ts: number;
+	src: string; // "stderr" or "stdout"
+	text: string;
+	seq: number;
 }
 
 export interface ActiveWorker {

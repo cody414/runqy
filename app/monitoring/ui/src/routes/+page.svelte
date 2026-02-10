@@ -83,11 +83,11 @@
 	<title>Dashboard - runqy Monitor</title>
 </svelte:head>
 
-<div class="p-6 space-y-6">
+<div class="rq-page space-y-8">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold">Dashboard</h1>
+			<h1 class="rq-page-title">Dashboard</h1>
 			<p class="text-surface-500">
 				{#if $queuesStore.lastUpdated}
 					Last updated {formatRelativeTime($queuesStore.lastUpdated)}
@@ -96,7 +96,7 @@
 				{/if}
 			</p>
 		</div>
-		<button type="button" class="btn preset-filled-primary-500 {refreshing ? 'refresh-spinning' : ''}" onclick={handleRefresh}>
+		<button type="button" class="rq-btn-primary {refreshing ? 'refresh-spinning' : ''}" onclick={handleRefresh}>
 			<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path
 					stroke-linecap="round"
@@ -127,7 +127,7 @@
 
 	<!-- Error State -->
 	{#if $queuesStore.error}
-		<div class="card p-4 preset-outlined-error-500">
+		<div class="rq-card p-4">
 			<p class="text-error-500">Failed to load queues: {$queuesStore.error}</p>
 		</div>
 	{/if}
@@ -135,11 +135,11 @@
 	<!-- Queues Grid -->
 	<div>
 		<div class="flex items-center justify-between mb-4">
-			<h2 class="text-lg font-semibold">Queues</h2>
+			<h2 class="rq-section-title">Queues</h2>
 			{#if showGroupToggle}
 				<button
 					type="button"
-					class="btn btn-sm {groupQueuesEnabled ? 'preset-filled-primary-500' : 'preset-outlined-surface-500'}"
+					class="{groupQueuesEnabled ? 'rq-pill-active' : 'rq-pill'}"
 					onclick={() => groupQueuesEnabled = !groupQueuesEnabled}
 					title={groupQueuesEnabled ? 'Show individual queues' : 'Group sub-queues'}
 				>
@@ -158,7 +158,7 @@
 		{#if $queuesStore.loading && $queuesStore.queues.length === 0}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each [1, 2, 3, 4, 5, 6] as i (i)}
-					<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4">
+					<div class="rq-card p-5">
 						<div class="animate-pulse space-y-3">
 							<div class="h-6 bg-surface-300 dark:bg-surface-600 rounded w-1/2"></div>
 							<div class="grid grid-cols-3 gap-3">
@@ -171,7 +171,7 @@
 				{/each}
 			</div>
 		{:else if $queuesStore.queues.length === 0}
-			<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-8 text-center">
+			<div class="rq-card rq-empty-state">
 				<svg class="w-12 h-12 mx-auto text-surface-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
@@ -202,7 +202,7 @@
 	{#if $workersStore.workers.length > 0}
 		<div class="mt-8">
 			<div class="flex items-center justify-between mb-4">
-				<h2 class="text-lg font-semibold">Workers Overview</h2>
+				<h2 class="rq-section-title">Workers Overview</h2>
 				<a href="{base}/workers" class="text-primary-500 hover:text-primary-600 text-sm font-medium">
 					View all →
 				</a>
@@ -210,23 +210,23 @@
 
 			<!-- Worker Stats -->
 			<div class="grid grid-cols-5 gap-4 mb-4">
-				<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-3 text-center">
+				<div class="rq-card p-3 text-center">
 					<div class="text-2xl font-bold text-primary-500">{$workerStats.processing}</div>
 					<div class="text-xs text-surface-500">Processing</div>
 				</div>
-				<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-3 text-center">
+				<div class="rq-card p-3 text-center">
 					<div class="text-2xl font-bold text-success-500">{$workerStats.idle}</div>
 					<div class="text-xs text-surface-500">Idle</div>
 				</div>
-				<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-3 text-center">
+				<div class="rq-card p-3 text-center">
 					<div class="text-2xl font-bold text-secondary-500">{$workerStats.bootstrapping}</div>
 					<div class="text-xs text-surface-500">Bootstrapping</div>
 				</div>
-				<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-3 text-center">
+				<div class="rq-card p-3 text-center">
 					<div class="text-2xl font-bold text-warning-500">{$workerStats.stale}</div>
 					<div class="text-xs text-surface-500">Stale</div>
 				</div>
-				<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-3 text-center">
+				<div class="rq-card p-3 text-center">
 					<div class="text-2xl font-bold text-surface-500">{$workerStats.stopped}</div>
 					<div class="text-xs text-surface-500">Stopped</div>
 				</div>
@@ -234,7 +234,7 @@
 
 			<!-- Worker List Table -->
 			<div class="table-container">
-				<table class="table table-hover">
+				<table class="rq-table">
 					<thead>
 						<tr>
 							<th>Worker ID</th>
@@ -292,8 +292,8 @@
 		</div>
 	{:else}
 		<div class="mt-8">
-			<h2 class="text-lg font-semibold mb-4">Workers Overview</h2>
-			<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-8 text-center">
+			<h2 class="rq-section-title mb-4">Workers Overview</h2>
+			<div class="rq-card rq-empty-state">
 				<svg class="w-12 h-12 mx-auto text-surface-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"

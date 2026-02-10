@@ -78,9 +78,12 @@
 		return val.toString();
 	}
 
-	function truncateQueueName(name: string, maxLen: number = 12): string {
-		if (name.length <= maxLen) return name;
-		return name.slice(0, maxLen - 1) + '...';
+	function truncateQueueName(name: string): string {
+		const parts = name.split('-');
+		if (parts.length >= 2) {
+			return parts.map(p => p.slice(0, 2)).join('-');
+		}
+		return name.slice(0, 2);
 	}
 
 	function handleQueueClick(qname: string) {
@@ -88,7 +91,7 @@
 	}
 </script>
 
-<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4">
+<div class="rq-card p-5">
 	<div class="flex items-center justify-between mb-4">
 		<h3 class="text-lg font-semibold">Live Queue Sizes</h3>
 		{#if $queuesStore.queues.length > maxQueues}
@@ -159,8 +162,9 @@
 						placement="bottom"
 						format={(d) => truncateQueueName(d)}
 						tickLabelProps={{ class: 'text-xs' }}
+						classes={{ tickLabel: '!fill-[#9ca3af] !stroke-[#111118]' }}
 					/>
-					<Axis placement="left" format={formatNumber} ticks={5} />
+					<Axis placement="left" format={formatNumber} ticks={5} classes={{ tickLabel: '!fill-[#9ca3af] !stroke-[#111118]' }} />
 				</Svg>
 
 				<Tooltip.Root let:data>

@@ -6,7 +6,7 @@
 	import { workersStore } from '$lib/stores/workers';
 	import { settings } from '$lib/stores/settings';
 	import { toaster } from '$lib/stores/toaster';
-	import { pauseQueue, resumeQueue, deleteQueue, createQueueConfig, getQueueConfig, updateQueueConfig } from '$lib/api/client';
+	import { pauseQueue, resumeQueue, deleteQueue, createQueueConfig, getQueueConfig, getQueueConfigs, updateQueueConfig } from '$lib/api/client';
 	import { formatNumber, formatBytes, formatDuration, truncateId } from '$lib/utils/format';
 	import { groupQueues, hasMultiQueueGroups, parseQueueName } from '$lib/utils/queueGrouping';
 	import QueueCard from '$lib/components/QueueCard.svelte';
@@ -15,6 +15,7 @@
 	import QueueConfigModal from '$lib/components/QueueConfigModal.svelte';
 	import type { Worker, QueueConfigDetail, DeploymentConfig } from '$lib/api/types';
 
+	let queueConfigMap = $state<Map<string, QueueConfigDetail>>(new Map());
 	let pollInterval: ReturnType<typeof setInterval> | null = null;
 	let searchQuery = $state('');
 	let showPaused: boolean | null = $state(null);
@@ -79,7 +80,24 @@
 	}
 
 	async function loadData() {
-		await Promise.all([queuesStore.fetch(), workersStore.fetch()]);
+		await Promise.all([
+			queuesStore.fetch(),
+			workersStore.fetch(),
+			loadQueueConfigs()
+		]);
+	}
+
+	async function loadQueueConfigs() {
+		try {
+			const response = await getQueueConfigs();
+			const map = new Map<string, QueueConfigDetail>();
+			for (const q of response.queues) {
+				map.set(q.name, q);
+			}
+			queueConfigMap = map;
+		} catch (e) {
+			console.error('Failed to load queue configs:', e);
+		}
 	}
 
 	async function handleRefresh() {
@@ -242,15 +260,15 @@
 	<title>Queues - runqy Monitor</title>
 </svelte:head>
 
-<div class="p-6 space-y-6">
+<div class="rq-page space-y-8">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold">Queues</h1>
+			<h1 class="rq-page-title">Queues</h1>
 			<p class="text-surface-500">{filteredQueues.length} queue{filteredQueues.length !== 1 ? 's' : ''}</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<button type="button" class="btn preset-outlined-surface-500 {refreshing ? 'refresh-spinning' : ''}" onclick={handleRefresh}>
+			<button type="button" class="rq-btn-primary {refreshing ? 'refresh-spinning' : ''}" onclick={handleRefresh}>
 				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
@@ -261,7 +279,7 @@
 				</svg>
 				Refresh
 			</button>
-			<button type="button" class="btn preset-filled-success-500" onclick={openCreateQueueConfig}>
+			<button type="button" class="rq-btn-success" onclick={openCreateQueueConfig}>
 				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
 				</svg>
@@ -298,21 +316,21 @@
 		<div class="flex items-center gap-2">
 			<button
 				type="button"
-				class="btn btn-sm {showPaused === null ? 'preset-filled-primary-500' : 'preset-outlined-surface-500'}"
+				class="{showPaused === null ? 'rq-pill-active' : 'rq-pill'}"
 				onclick={() => (showPaused = null)}
 			>
 				All
 			</button>
 			<button
 				type="button"
-				class="btn btn-sm {showPaused === false ? 'preset-filled-success-500' : 'preset-outlined-surface-500'}"
+				class="{showPaused === false ? 'rq-pill-active' : 'rq-pill'}"
 				onclick={() => (showPaused = false)}
 			>
 				Running
 			</button>
 			<button
 				type="button"
-				class="btn btn-sm {showPaused === true ? 'preset-filled-warning-500' : 'preset-outlined-surface-500'}"
+				class="{showPaused === true ? 'rq-pill-active' : 'rq-pill'}"
 				onclick={() => (showPaused = true)}
 			>
 				Paused
@@ -323,7 +341,7 @@
 		{#if showGroupToggle}
 			<button
 				type="button"
-				class="btn btn-sm {groupQueuesEnabled ? 'preset-filled-primary-500' : 'preset-outlined-surface-500'}"
+				class="{groupQueuesEnabled ? 'rq-pill-active' : 'rq-pill'}"
 				onclick={() => groupQueuesEnabled = !groupQueuesEnabled}
 				title={groupQueuesEnabled ? 'Show individual queues' : 'Group sub-queues'}
 			>
@@ -375,7 +393,7 @@
 
 	<!-- Error State -->
 	{#if $queuesStore.error}
-		<div class="card p-4 preset-outlined-error-500">
+		<div class="rq-card p-4">
 			<p class="text-error-500">Failed to load queues: {$queuesStore.error}</p>
 		</div>
 	{/if}
@@ -385,7 +403,7 @@
 		{#if viewMode === 'cards'}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each [1, 2, 3, 4, 5, 6] as i (i)}
-					<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4">
+					<div class="rq-card p-5">
 						<div class="animate-pulse space-y-3">
 							<div class="h-6 bg-surface-300 dark:bg-surface-600 rounded w-1/2"></div>
 							<div class="grid grid-cols-3 gap-3">
@@ -399,7 +417,7 @@
 			</div>
 		{:else}
 			<div class="table-container">
-				<table class="table">
+				<table class="rq-table">
 					<tbody>
 						{#each [1, 2, 3, 4, 5] as i (i)}
 							<tr>
@@ -438,6 +456,7 @@
 					<QueueCard
 						{queue}
 						workers={$workersStore.workers}
+						redisStorage={queueConfigMap.get(queue.queue)?.deployment?.redis_storage ?? false}
 						onClick={() => navigateToQueue(queue.queue)}
 						onPause={() => handlePause(queue.queue)}
 						onResume={() => handleResume(queue.queue)}
@@ -449,11 +468,12 @@
 	{:else}
 		<!-- Table View -->
 		<div class="table-container">
-			<table class="table table-hover">
+			<table class="rq-table">
 				<thead>
 					<tr>
 						<th>Name</th>
 						<th>Status</th>
+						<th>Storage</th>
 						<th>Workers</th>
 						<th class="text-right">Pending</th>
 						<th class="text-right">Active</th>
@@ -469,6 +489,7 @@
 						{#each queueGroups as group (group.name)}
 							{@const isExpanded = expandedGroups.has(group.name)}
 							{@const hasSubQueues = group.queues.length > 1}
+							{@const groupRedisStorage = queueConfigMap.get(group.queues[0]?.queue)?.deployment?.redis_storage}
 							<!-- Parent/Group Row -->
 							<tr
 								class="cursor-pointer {hasSubQueues ? 'bg-surface-50 dark:bg-surface-800' : ''}"
@@ -497,6 +518,13 @@
 										<span class="badge preset-filled-warning-500 text-xs">Paused</span>
 									{:else}
 										<span class="badge preset-filled-success-500 text-xs">Running</span>
+									{/if}
+								</td>
+								<td>
+									{#if groupRedisStorage}
+										<span class="badge preset-filled-success-500 text-xs">Redis</span>
+									{:else}
+										<span class="badge preset-filled-surface-500 text-xs">None</span>
 									{/if}
 								</td>
 								<td>
@@ -556,6 +584,7 @@
 								{#each group.queues as queue (queue.queue)}
 									{@const queueWorkers = getWorkersForQueue(queue.queue)}
 									{@const subqueueName = parseQueueName(queue.queue).subqueue || queue.queue}
+									{@const subRedisStorage = queueConfigMap.get(queue.queue)?.deployment?.redis_storage}
 									<tr class="cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700" onclick={() => navigateToQueue(queue.queue)}>
 										<td>
 											<div class="pl-8 flex items-center gap-2">
@@ -568,6 +597,13 @@
 												<span class="badge preset-filled-warning-500 text-xs">Paused</span>
 											{:else}
 												<span class="badge preset-filled-success-500 text-xs">Running</span>
+											{/if}
+										</td>
+										<td>
+											{#if subRedisStorage}
+												<span class="badge preset-filled-success-500 text-xs">Redis</span>
+											{:else}
+												<span class="badge preset-filled-surface-500 text-xs">None</span>
 											{/if}
 										</td>
 										<td>
@@ -642,6 +678,7 @@
 					{:else}
 						{#each filteredQueues as queue (queue.queue)}
 							{@const queueWorkers = getWorkersForQueue(queue.queue)}
+							{@const queueRedisStorage = queueConfigMap.get(queue.queue)?.deployment?.redis_storage}
 							<tr class="cursor-pointer" onclick={() => navigateToQueue(queue.queue)}>
 								<td>
 									<span class="font-semibold text-primary-500 hover:text-primary-600">{queue.queue}</span>
@@ -651,6 +688,13 @@
 										<span class="badge preset-filled-warning-500 text-xs">Paused</span>
 									{:else}
 										<span class="badge preset-filled-success-500 text-xs">Running</span>
+									{/if}
+								</td>
+								<td>
+									{#if queueRedisStorage}
+										<span class="badge preset-filled-success-500 text-xs">Redis</span>
+									{:else}
+										<span class="badge preset-filled-surface-500 text-xs">None</span>
 									{/if}
 								</td>
 								<td>

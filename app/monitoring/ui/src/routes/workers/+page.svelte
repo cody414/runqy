@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	import { workersStore, workerStats } from '$lib/stores/workers';
 	import { settings } from '$lib/stores/settings';
 	import WorkerCard from '$lib/components/WorkerCard.svelte';
@@ -44,6 +46,23 @@
 		}).filter(q => q.name);
 	}
 
+	function formatBytes(bytes: number): string {
+		if (bytes < 1024) return bytes + ' B';
+		if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+		if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+		return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+	}
+
+	function barColor(percent: number): string {
+		if (percent >= 90) return 'bg-error-500';
+		if (percent >= 70) return 'bg-warning-500';
+		return 'bg-success-500';
+	}
+
+	function navigateToWorker(workerId: string) {
+		goto(`${base}/workers/${encodeURIComponent(workerId)}`);
+	}
+
 	let filteredWorkers = $derived(
 		$workersStore.workers.filter((w) => {
 			const status = getWorkerStatus(w);
@@ -80,11 +99,11 @@
 	<title>Workers - runqy Monitor</title>
 </svelte:head>
 
-<div class="p-6 space-y-6">
+<div class="rq-page space-y-8">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold">Workers</h1>
+			<h1 class="rq-page-title">Workers</h1>
 			<p class="text-surface-500">
 				{filteredWorkers.length} worker{filteredWorkers.length !== 1 ? 's' : ''}
 				{#if $workersStore.lastUpdated}
@@ -93,7 +112,7 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<button type="button" class="btn preset-filled-primary-500 {refreshing ? 'refresh-spinning' : ''}" onclick={handleRefresh}>
+			<button type="button" class="rq-btn-primary {refreshing ? 'refresh-spinning' : ''}" onclick={handleRefresh}>
 				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
@@ -109,29 +128,29 @@
 
 	<!-- Stats -->
 	<div class="grid grid-cols-2 md:grid-cols-6 gap-4">
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
-			<div class="text-3xl font-bold">{$workerStats.total}</div>
-			<div class="text-sm text-surface-500">Total Workers</div>
+		<div class="rq-card p-4 text-center">
+			<div class="text-2xl font-semibold tracking-tight">{$workerStats.total}</div>
+			<div class="text-xs font-medium uppercase tracking-wider text-surface-400">Total Workers</div>
 		</div>
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
-			<div class="text-3xl font-bold text-primary-500">{$workerStats.processing}</div>
-			<div class="text-sm text-surface-500">Processing</div>
+		<div class="rq-card p-4 text-center">
+			<div class="text-2xl font-semibold tracking-tight text-primary-500">{$workerStats.processing}</div>
+			<div class="text-xs font-medium uppercase tracking-wider text-surface-400">Processing</div>
 		</div>
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
-			<div class="text-3xl font-bold text-success-500">{$workerStats.idle}</div>
-			<div class="text-sm text-surface-500">Idle</div>
+		<div class="rq-card p-4 text-center">
+			<div class="text-2xl font-semibold tracking-tight text-success-500">{$workerStats.idle}</div>
+			<div class="text-xs font-medium uppercase tracking-wider text-surface-400">Idle</div>
 		</div>
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
-			<div class="text-3xl font-bold text-secondary-500">{$workerStats.bootstrapping}</div>
-			<div class="text-sm text-surface-500">Bootstrapping</div>
+		<div class="rq-card p-4 text-center">
+			<div class="text-2xl font-semibold tracking-tight text-secondary-500">{$workerStats.bootstrapping}</div>
+			<div class="text-xs font-medium uppercase tracking-wider text-surface-400">Bootstrapping</div>
 		</div>
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
-			<div class="text-3xl font-bold text-warning-500">{$workerStats.stale}</div>
-			<div class="text-sm text-surface-500">Stale</div>
+		<div class="rq-card p-4 text-center">
+			<div class="text-2xl font-semibold tracking-tight text-warning-500">{$workerStats.stale}</div>
+			<div class="text-xs font-medium uppercase tracking-wider text-surface-400">Stale</div>
 		</div>
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 text-center">
-			<div class="text-3xl font-bold text-surface-500">{$workerStats.stopped}</div>
-			<div class="text-sm text-surface-500">Stopped</div>
+		<div class="rq-card p-4 text-center">
+			<div class="text-2xl font-semibold tracking-tight text-surface-500">{$workerStats.stopped}</div>
+			<div class="text-xs font-medium uppercase tracking-wider text-surface-400">Stopped</div>
 		</div>
 	</div>
 
@@ -140,42 +159,42 @@
 		<div class="flex items-center gap-2 flex-wrap">
 			<button
 				type="button"
-				class="btn btn-sm {statusFilter === null ? 'preset-filled-primary-500' : 'preset-outlined-surface-500'}"
+				class="{statusFilter === null ? 'rq-pill-active' : 'rq-pill'}"
 				onclick={() => (statusFilter = null)}
 			>
 				All
 			</button>
 			<button
 				type="button"
-				class="btn btn-sm {statusFilter === 'processing' ? 'preset-filled-primary-500' : 'preset-outlined-surface-500'}"
+				class="{statusFilter === 'processing' ? 'rq-pill-active' : 'rq-pill'}"
 				onclick={() => (statusFilter = 'processing')}
 			>
 				Processing
 			</button>
 			<button
 				type="button"
-				class="btn btn-sm {statusFilter === 'idle' ? 'preset-filled-success-500' : 'preset-outlined-surface-500'}"
+				class="{statusFilter === 'idle' ? 'rq-pill-active' : 'rq-pill'}"
 				onclick={() => (statusFilter = 'idle')}
 			>
 				Idle
 			</button>
 			<button
 				type="button"
-				class="btn btn-sm {statusFilter === 'bootstrapping' ? 'preset-filled-secondary-500' : 'preset-outlined-surface-500'}"
+				class="{statusFilter === 'bootstrapping' ? 'rq-pill-active' : 'rq-pill'}"
 				onclick={() => (statusFilter = 'bootstrapping')}
 			>
 				Bootstrapping
 			</button>
 			<button
 				type="button"
-				class="btn btn-sm {statusFilter === 'stale' ? 'preset-filled-warning-500' : 'preset-outlined-surface-500'}"
+				class="{statusFilter === 'stale' ? 'rq-pill-active' : 'rq-pill'}"
 				onclick={() => (statusFilter = 'stale')}
 			>
 				Stale
 			</button>
 			<button
 				type="button"
-				class="btn btn-sm {statusFilter === 'stopped' ? 'preset-filled-surface-500' : 'preset-outlined-surface-500'}"
+				class="{statusFilter === 'stopped' ? 'rq-pill-active' : 'rq-pill'}"
 				onclick={() => (statusFilter = 'stopped')}
 			>
 				Stopped
@@ -218,7 +237,7 @@
 
 	<!-- Error State -->
 	{#if $workersStore.error}
-		<div class="card p-4 preset-outlined-error-500">
+		<div class="rq-card p-4">
 			<p class="text-error-500">Failed to load workers: {$workersStore.error}</p>
 		</div>
 	{/if}
@@ -228,7 +247,7 @@
 		{#if viewMode === 'cards'}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each [1, 2, 3] as i (i)}
-					<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4">
+					<div class="rq-card p-5">
 						<div class="animate-pulse space-y-3">
 							<div class="h-5 bg-surface-300 dark:bg-surface-600 rounded w-2/3"></div>
 							<div class="h-4 bg-surface-300 dark:bg-surface-600 rounded w-1/2"></div>
@@ -243,7 +262,7 @@
 					<tbody>
 						{#each [1, 2, 3] as i (i)}
 							<tr>
-								<td colspan="6">
+								<td colspan="9">
 									<div class="animate-pulse h-4 bg-surface-300 dark:bg-surface-600 rounded"></div>
 								</td>
 							</tr>
@@ -253,7 +272,7 @@
 			</div>
 		{/if}
 	{:else if filteredWorkers.length === 0}
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-8 text-center">
+		<div class="rq-card rq-empty-state">
 			<svg class="w-12 h-12 mx-auto text-surface-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path
 					stroke-linecap="round"
@@ -270,17 +289,20 @@
 	{:else if viewMode === 'cards'}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 			{#each filteredWorkers as worker (worker.worker_id)}
-				<WorkerCard {worker} />
+				<WorkerCard {worker} onclick={() => navigateToWorker(worker.worker_id)} />
 			{/each}
 		</div>
 	{:else}
 		<div class="table-container">
-			<table class="table table-hover">
+			<table class="rq-table">
 				<thead>
 					<tr>
 						<th>Worker ID</th>
 						<th>Status</th>
 						<th>Concurrency</th>
+						<th>CPU</th>
+						<th>RAM</th>
+						<th>GPU</th>
 						<th>Queues</th>
 						<th>Started</th>
 						<th>Last Beat</th>
@@ -288,7 +310,9 @@
 				</thead>
 				<tbody>
 					{#each filteredWorkers as worker (worker.worker_id)}
-						<tr>
+						{@const wm = worker.metrics}
+						{@const memPct = wm && wm.memory_total_bytes > 0 ? (wm.memory_used_bytes / wm.memory_total_bytes) * 100 : 0}
+						<tr class="cursor-pointer" onclick={() => navigateToWorker(worker.worker_id)}>
 							<td class="font-mono text-sm">{worker.worker_id}</td>
 							<td>
 								{#if getWorkerStatus(worker) === 'processing'}
@@ -304,6 +328,46 @@
 								{/if}
 							</td>
 							<td class="font-mono">{worker.concurrency}</td>
+							<td>
+								{#if wm}
+									<div class="flex items-center gap-2 min-w-[80px]">
+										<div class="rq-progress-track w-16">
+											<div class="h-full rounded-full {barColor(wm.cpu_percent)}" style="width: {Math.min(wm.cpu_percent, 100)}%"></div>
+										</div>
+										<span class="text-xs text-surface-500">{wm.cpu_percent.toFixed(0)}%</span>
+									</div>
+								{:else}
+									<span class="text-xs text-surface-400">-</span>
+								{/if}
+							</td>
+							<td>
+								{#if wm}
+									<div class="flex items-center gap-2 min-w-[100px]">
+										<div class="rq-progress-track w-16">
+											<div class="h-full rounded-full {barColor(memPct)}" style="width: {Math.min(memPct, 100)}%"></div>
+										</div>
+										<span class="text-xs text-surface-500">{formatBytes(wm.memory_used_bytes)}</span>
+									</div>
+								{:else}
+									<span class="text-xs text-surface-400">-</span>
+								{/if}
+							</td>
+							<td>
+								{#if wm?.gpus && wm.gpus.length > 0}
+									<div class="space-y-1">
+										{#each wm.gpus as gpu (gpu.index)}
+											<div class="flex items-center gap-2 min-w-[100px]">
+												<div class="rq-progress-track w-16">
+													<div class="h-full rounded-full {barColor(gpu.utilization_percent)}" style="width: {Math.min(gpu.utilization_percent, 100)}%"></div>
+												</div>
+												<span class="text-xs text-surface-500" title={gpu.name}>{gpu.utilization_percent.toFixed(0)}% {gpu.temperature_c}&deg;C</span>
+											</div>
+										{/each}
+									</div>
+								{:else}
+									<span class="text-xs text-surface-400">-</span>
+								{/if}
+							</td>
 							<td>
 								<div class="flex flex-wrap gap-1">
 									{#each parseQueues(worker.queues) as queue (queue.name)}

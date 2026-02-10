@@ -29,12 +29,12 @@
 	<title>Settings - runqy Monitor</title>
 </svelte:head>
 
-<div class="p-6 max-w-2xl">
-	<h1 class="text-2xl font-bold mb-6">Settings</h1>
+<div class="rq-page max-w-2xl">
+	<h1 class="rq-page-title mb-6">Settings</h1>
 
 	<div class="space-y-8">
 		<!-- Theme -->
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
+		<div class="rq-card p-6">
 			<h2 class="text-lg font-semibold mb-4">Appearance</h2>
 
 			<div class="space-y-4">
@@ -46,7 +46,7 @@
 								type="button"
 								class="card p-4 text-center transition-all {$settings.theme === theme.value
 									? 'ring-2 ring-primary-500'
-									: 'hover:bg-surface-100 dark:hover:bg-surface-700'}"
+									: 'hover:bg-white/[0.03]'}"
 								onclick={() => settings.setTheme(theme.value)}
 							>
 								<div class="mb-2">
@@ -94,7 +94,7 @@
 								type="button"
 								class="card p-4 text-left transition-all {$settings.viewDensity === density.value
 									? 'ring-2 ring-primary-500'
-									: 'hover:bg-surface-100 dark:hover:bg-surface-700'}"
+									: 'hover:bg-white/[0.03]'}"
 								onclick={() => settings.setViewDensity(density.value)}
 							>
 								<div class="font-medium">{density.label}</div>
@@ -107,7 +107,7 @@
 		</div>
 
 		<!-- Polling -->
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
+		<div class="rq-card p-6">
 			<h2 class="text-lg font-semibold mb-4">Data Refresh</h2>
 
 			<div>
@@ -129,7 +129,7 @@
 		</div>
 
 		<!-- Sidebar -->
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
+		<div class="rq-card p-6">
 			<h2 class="text-lg font-semibold mb-4">Navigation</h2>
 
 			<div class="flex items-center justify-between">
@@ -152,7 +152,7 @@
 		</div>
 
 		<!-- Reset -->
-		<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-6">
+		<div class="rq-card p-6">
 			<h2 class="text-lg font-semibold mb-4">Reset</h2>
 			<p class="text-sm text-surface-500 mb-4">Reset all settings to their default values</p>
 			<button type="button" class="btn preset-outlined-error-500" onclick={() => settings.reset()}>

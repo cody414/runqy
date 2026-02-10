@@ -43,11 +43,11 @@
 	}
 </script>
 
-<div class="card preset-outlined-surface-200-800 bg-surface-50-950 w-full text-left {group.paused ? 'opacity-75' : ''}">
+<div class="rq-card w-full text-left {group.paused ? 'opacity-75' : ''}">
 	<!-- Group Header -->
 	<button
 		type="button"
-		class="w-full p-4 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors rounded-t-lg"
+		class="w-full p-5 hover:bg-white/[0.02] transition-colors rounded-t-[0.75rem]"
 		onclick={handleGroupClick}
 	>
 		<div class="flex items-start justify-between mb-4">
@@ -83,7 +83,7 @@
 		<!-- Workers listening on this group -->
 		<div class="mb-4">
 			{#if listeningWorkers.length === 0}
-				<div class="warning-badge text-xs px-3 py-2 rounded flex items-center gap-2">
+				<div class="text-xs px-3 py-2 rounded flex items-center gap-2 bg-warning-500/10 text-warning-400 border border-warning-500/20">
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
 					</svg>
@@ -106,30 +106,30 @@
 
 		<!-- Aggregated Stats -->
 		<div class="grid grid-cols-3 gap-3 text-center">
-			<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+			<div class="rq-metric-box">
 				<div class="text-xl font-bold text-warning-500">{formatNumber(group.pending)}</div>
 				<div class="text-xs text-surface-500 mt-1">Pending</div>
 			</div>
-			<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+			<div class="rq-metric-box">
 				<div class="text-xl font-bold text-success-500">{formatNumber(group.active)}</div>
 				<div class="text-xs text-surface-500 mt-1">Active</div>
 			</div>
-			<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+			<div class="rq-metric-box">
 				<div class="text-xl font-bold text-tertiary-500">{formatNumber(group.completed)}</div>
 				<div class="text-xs text-surface-500 mt-1">Completed</div>
 			</div>
 		</div>
 
 		<div class="grid grid-cols-3 gap-3 text-center mt-4">
-			<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+			<div class="rq-metric-box">
 				<div class="text-xl font-bold text-orange-500">{formatNumber(group.retry)}</div>
 				<div class="text-xs text-surface-500 mt-1">Retry</div>
 			</div>
-			<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+			<div class="rq-metric-box">
 				<div class="text-xl font-bold text-surface-500">{formatNumber(group.archived)}</div>
 				<div class="text-xs text-surface-500 mt-1">Archived</div>
 			</div>
-			<div class="p-3 rounded bg-surface-100 dark:bg-surface-700">
+			<div class="rq-metric-box">
 				<div class="text-xl font-bold text-error-500">{formatNumber(group.failed)}</div>
 				<div class="text-xs text-surface-500 mt-1">Failed</div>
 			</div>
@@ -138,12 +138,13 @@
 
 	<!-- Sub-queues (expanded) -->
 	{#if group.queues.length > 1 && expanded}
-		<div class="border-t border-surface-200 dark:border-surface-700">
+		<div style="border-top: 1px solid var(--runqy-border-subtle);">
 			{#each group.queues as queue (queue.queue)}
 				{@const subqueueName = parseQueueName(queue.queue).subqueue || queue.queue}
 				<button
 					type="button"
-					class="w-full px-4 py-3 pl-8 text-left hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors border-b border-surface-100 dark:border-surface-800 last:border-b-0"
+					class="w-full px-4 py-3 pl-8 text-left hover:bg-white/[0.02] transition-colors last:rounded-b-[0.75rem]"
+					style="border-bottom: 1px solid var(--runqy-border-subtle);"
 					onclick={(e) => handleSubQueueClick(e, queue.queue)}
 				>
 					<div class="flex items-center justify-between">

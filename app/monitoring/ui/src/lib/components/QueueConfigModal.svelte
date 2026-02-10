@@ -195,7 +195,7 @@
 					startup_cmd: startupCmd.trim(),
 					mode: deploymentMode,
 					startup_timeout_secs: startupTimeout,
-					redis_storage: redisStorage || undefined,
+					redis_storage: redisStorage,
 					vaults: vaultsArray.length > 0 ? vaultsArray : undefined,
 					git_token: gitTokenRef || undefined
 				};
