@@ -14,7 +14,7 @@ type APIErrorResponse struct {
 type GenericTask struct {
 	Queue   string          `json:"queue"`
 	Timeout int64           `json:"timeout"`
-	Data    json.RawMessage `json:"data"`
+	Data    json.RawMessage `json:"data" swaggertype:"object"`
 }
 type Predict struct {
 	UserId     int64   `json:"user_id" `
@@ -93,7 +93,7 @@ type ResponsePost struct {
 
 type GenericResponsePost struct {
 	Info AddTaskInfoDoc  `json:"info"`
-	Data json.RawMessage `json:"data"`
+	Data json.RawMessage `json:"data" swaggertype:"object"`
 }
 type ResponseGet struct {
 	Info GetTaskInfoDoc

@@ -1,4 +1,219 @@
 definitions:
+  api.BatchTaskRequest:
+    properties:
+      jobs:
+        items:
+          type: object
+        type: array
+      queue:
+        type: string
+      timeout:
+        description: Default timeout for all jobs
+        type: integer
+    required:
+    - jobs
+    - queue
+    type: object
+  api.BatchTaskResponse:
+    properties:
+      enqueued:
+        type: integer
+      errors:
+        items:
+          type: string
+        type: array
+      failed:
+        type: integer
+      task_ids:
+        items:
+          type: string
+        type: array
+    type: object
+  api.CreateQueueRequest:
+    properties:
+      deployment:
+        $ref: '#/definitions/queueworker.DeploymentConfig'
+      name:
+        type: string
+      priority:
+        minimum: 1
+        type: integer
+      provider:
+        type: string
+    required:
+    - name
+    - priority
+    type: object
+  api.CreateQueueResponse:
+    properties:
+      message:
+        type: string
+      queue:
+        $ref: '#/definitions/queueworker.QueueConfig'
+    type: object
+  api.CreateVaultRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  api.HandshakeErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  api.HandshakeRequest:
+    properties:
+      hostname:
+        type: string
+      os:
+        type: string
+      queue:
+        type: string
+      version:
+        type: string
+    type: object
+  api.QueuesListResponse:
+    properties:
+      count:
+        type: integer
+      queues:
+        items:
+          $ref: '#/definitions/queueworker.QueueSummary'
+        type: array
+    type: object
+  api.ReloadResponse:
+    properties:
+      errors:
+        items:
+          type: string
+        type: array
+      reloaded:
+        items:
+          type: string
+        type: array
+      timestamp:
+        type: integer
+    type: object
+  api.SetEntryRequest:
+    properties:
+      is_secret:
+        description: Defaults to true if not provided
+        type: boolean
+      key:
+        type: string
+      value:
+        type: string
+    required:
+    - key
+    - value
+    type: object
+  api.SubQueueConfig:
+    properties:
+      name:
+        type: string
+      priority:
+        type: integer
+    type: object
+  api.VaultsListResponse:
+    properties:
+      count:
+        type: integer
+      vaults:
+        items:
+          $ref: '#/definitions/vaults.VaultSummary'
+        type: array
+    type: object
+  api.WorkerConfigResponse:
+    properties:
+      deployment:
+        $ref: '#/definitions/api.WorkerDeploymentConfig'
+      git_token:
+        description: Resolved git token for authentication
+        type: string
+      queue:
+        $ref: '#/definitions/api.WorkerQueueConfig'
+      redis:
+        $ref: '#/definitions/api.WorkerRedisConfig'
+      sub_queues:
+        items:
+          $ref: '#/definitions/api.SubQueueConfig'
+        type: array
+      vaults:
+        additionalProperties:
+          type: string
+        description: Decrypted vault key-value pairs
+        type: object
+    type: object
+  api.WorkerDeploymentConfig:
+    properties:
+      branch:
+        type: string
+      code_path:
+        type: string
+      git_url:
+        type: string
+      mode:
+        type: string
+      redis_storage:
+        type: boolean
+      startup_cmd:
+        type: string
+      startup_timeout_secs:
+        type: integer
+      vaults:
+        items:
+          type: string
+        type: array
+    type: object
+  api.WorkerInfo:
+    properties:
+      concurrency:
+        type: integer
+      is_stale:
+        description: True if last_beat > 30s ago
+        type: boolean
+      last_beat:
+        type: integer
+      queues:
+        type: string
+      started_at:
+        type: integer
+      status:
+        type: string
+      worker_id:
+        type: string
+    type: object
+  api.WorkerQueueConfig:
+    properties:
+      name:
+        type: string
+      priority:
+        type: integer
+    type: object
+  api.WorkerRedisConfig:
+    properties:
+      addr:
+        type: string
+      db:
+        type: integer
+      password:
+        type: string
+      use_tls:
+        type: boolean
+    type: object
+  api.WorkersResponse:
+    properties:
+      count:
+        type: integer
+      workers:
+        items:
+          $ref: '#/definitions/api.WorkerInfo'
+        type: array
+    type: object
   models.APIErrorResponse:
     properties:
       errors:
@@ -44,6 +259,22 @@ definitions:
       type:
         type: string
     type: object
+  models.GenericResponsePost:
+    properties:
+      data:
+        type: object
+      info:
+        $ref: '#/definitions/models.AddTaskInfoDoc'
+    type: object
+  models.GenericTask:
+    properties:
+      data:
+        type: object
+      queue:
+        type: string
+      timeout:
+        type: integer
+    type: object
   models.GetTaskInfoDoc:
     properties:
       completedAt:
@@ -77,119 +308,343 @@ definitions:
       type:
         type: string
     type: object
-  models.Predict:
-    properties:
-      enqueued_at:
-        type: integer
-      model_input:
-        $ref: '#/definitions/models.Request'
-      predict_id:
-        type: integer
-      provider:
-        description: '"azure", "openai", "google", "worker" or empty (default: worker)'
-        type: string
-      queue:
-        type: string
-      status:
-        type: string
-      timeout:
-        type: integer
-      user_id:
-        type: integer
-      webhook_url:
-        type: string
-    type: object
-  models.Request:
-    properties:
-      batch_nbr:
-        description: BatchNbr is the number of images to generate (all providers)
-        type: integer
-      clip_skip:
-        description: ClipSkip is the number of CLIP layers to skip (worker/SDXL only)
-        type: integer
-      decode_noise_scale:
-        description: DecodeNoiseScale for video decode process (worker/SDXL only)
-        type: number
-      decode_timesteps:
-        description: DecodeTimesteps for video decode process (worker/SDXL only)
-        type: number
-      fps:
-        description: FPS is the frames per second for video output (worker/SDXL only)
-        type: integer
-      guidance_scale:
-        description: GuidanceScale controls how closely to follow the prompt (worker/SDXL
-          only)
-        type: number
-      height:
-        description: Height of the output image in pixels (all providers)
-        type: integer
-      id:
-        description: ID is the request identifier (all providers)
-        type: string
-      img_url:
-        description: ImgURL is the input image URL for img2img generation (worker/SDXL
-          only)
-        type: string
-      model_name:
-        description: 'ModelName is the model to use. Worker: SDXL model name. Azure:
-          "gpt-image-1", "gpt-image-1.5", "flux.2-pro", "flux-1.1-pro" (required)'
-        type: string
-      negative_prompt:
-        description: NegativePrompt specifies what to avoid in generation (worker/SDXL
-          only)
-        type: string
-      num_frames:
-        description: NumFrames is the number of frames for video generation (worker/SDXL
-          only)
-        type: integer
-      num_steps:
-        description: NumSteps is the number of diffusion steps (worker/SDXL only)
-        type: integer
-      output_compression:
-        description: 'OutputCompression controls image compression 0-100 (Azure: gpt-image-1,
-          gpt-image-1.5 only)'
-        type: integer
-      output_format:
-        description: 'OutputFormat specifies output format: "png", "jpeg" (Azure:
-          gpt-image-1, gpt-image-1.5, flux-1.1-pro)'
-        type: string
-      prompt:
-        description: Prompt is the text prompt for generation - REQUIRED (all providers)
-        type: string
-      quality:
-        description: 'Quality level: "hd", "standard" (Azure: dall-e-3, gpt-image-1
-          only - not flux)'
-        type: string
-      scheduler:
-        description: Scheduler is the sampling scheduler to use (worker/SDXL only)
-        type: string
-      seed:
-        description: Seed for reproducible generation (worker/SDXL only)
-        type: integer
-      webhook_url:
-        description: URL is an alternative webhook URL field (all providers)
-        type: string
-      width:
-        description: Width of the output image in pixels (all providers)
-        type: integer
-    type: object
   models.ResponseGet:
     properties:
       info:
         $ref: '#/definitions/models.GetTaskInfoDoc'
     type: object
-  models.ResponsePost:
+  queueworker.DeploymentConfig:
     properties:
-      info:
-        $ref: '#/definitions/models.AddTaskInfoDoc'
-      userPredict:
-        $ref: '#/definitions/models.Predict'
+      branch:
+        type: string
+      code_path:
+        type: string
+      git_token:
+        description: 'Vault reference for git auth: "vault://vault-name/key"'
+        type: string
+      git_url:
+        type: string
+      mode:
+        type: string
+      redis_storage:
+        type: boolean
+      startup_cmd:
+        type: string
+      startup_timeout_secs:
+        type: integer
+      vaults:
+        description: List of vault names to inject as env vars
+        items:
+          type: string
+        type: array
+    type: object
+  queueworker.QueueConfig:
+    properties:
+      created_at:
+        type: integer
+      deployment:
+        $ref: '#/definitions/queueworker.DeploymentConfig'
+      name:
+        type: string
+      priority:
+        type: integer
+      provider:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  queueworker.QueueSummary:
+    properties:
+      name:
+        type: string
+      priority:
+        type: integer
+      provider:
+        type: string
+    type: object
+  vaults.VaultDetail:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      entries:
+        items:
+          $ref: '#/definitions/vaults.VaultEntryView'
+        type: array
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  vaults.VaultEntryView:
+    properties:
+      created_at:
+        type: string
+      is_secret:
+        type: boolean
+      key:
+        type: string
+      updated_at:
+        type: string
+      value:
+        description: Masked if IsSecret is true
+        type: string
+    type: object
+  vaults.VaultSummary:
+    properties:
+      description:
+        type: string
+      entry_count:
+        type: integer
+      name:
+        type: string
     type: object
 info:
-  description: Task queueing service built on asynq for managing distributed task processing
+  contact: {}
+  description: Task queueing service built on asynq for managing distributed task
+    processing
   title: Runqy Queue API
-  version: "1.0.0"
+  version: 1.0.0
 paths:
+  /api/vaults:
+    get:
+      description: List all vaults with entry counts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.VaultsListResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List all vaults
+      tags:
+      - vaults
+    post:
+      consumes:
+      - application/json
+      description: Create a new vault with the given name and description
+      parameters:
+      - description: Vault creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateVaultRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new vault
+      tags:
+      - vaults
+  /api/vaults/{name}:
+    delete:
+      description: Delete a vault and all its entries
+      parameters:
+      - description: Vault name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a vault
+      tags:
+      - vaults
+    get:
+      description: Get vault details with entries (secret values masked)
+      parameters:
+      - description: Vault name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/vaults.VaultDetail'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get vault details
+      tags:
+      - vaults
+  /api/vaults/{name}/entries:
+    get:
+      description: List all entries in a vault (secret values masked)
+      parameters:
+      - description: Vault name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List vault entries
+      tags:
+      - vaults
+    post:
+      consumes:
+      - application/json
+      description: Set or update a key-value pair in a vault
+      parameters:
+      - description: Vault name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Entry to set
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.SetEntryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Set a vault entry
+      tags:
+      - vaults
+  /api/vaults/{name}/entries/{key}:
+    delete:
+      description: Remove a key-value pair from a vault
+      parameters:
+      - description: Vault name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Entry key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a vault entry
+      tags:
+      - vaults
   /queue/{uuid}:
     get:
       consumes:
@@ -225,35 +680,318 @@ paths:
     post:
       consumes:
       - application/json
-      description: |-
-        Send a prediction request. Set `provider` to route to different backends:
-        - `""` or `"worker"`: External workers (SDXL) - uses num_steps, guidance_scale, seed, negative_prompt, scheduler, model_name
-        - `"azure"`: Azure OpenAI DALL-E - uses quality ("hd"/"standard")
-        Common fields: prompt (required), width, height, batch_nbr. Unused fields are ignored.
+      description: Send a generic task request with queue, timeout, and a flexible
+        JSON payload.
       parameters:
-      - description: The type of the generation either image or video
-        in: header
-        name: type
-        required: true
-        type: string
-      - description: '{object}'
+      - description: Task with queue, timeout, and payload
         in: body
-        name: predict
+        name: task
         required: true
         schema:
-          $ref: '#/definitions/models.Predict'
+          $ref: '#/definitions/models.GenericTask'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.ResponsePost'
+            $ref: '#/definitions/models.GenericResponsePost'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/models.APIErrorResponse'
-      summary: Send a new predict to the queuer
+      summary: Send a new task to the queuer
       tags:
       - queue
+  /queue/add-batch:
+    post:
+      consumes:
+      - application/json
+      description: Batch enqueue for high-throughput job submission. Uses Redis pipelining
+        for optimal performance.
+      parameters:
+      - description: Batch of tasks with queue and jobs array
+        in: body
+        name: batch
+        required: true
+        schema:
+          $ref: '#/definitions/api.BatchTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.BatchTaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIErrorResponse'
+      summary: Send multiple tasks to the queue in a single request
+      tags:
+      - queue
+  /worker/register:
+    post:
+      consumes:
+      - application/json
+      description: Register worker and retrieve queue configuration
+      parameters:
+      - description: Handshake request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.HandshakeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.WorkerConfigResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HandshakeErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.HandshakeErrorResponse'
+      summary: Worker handshake
+      tags:
+      - workers
+  /workers:
+    get:
+      description: Returns all workers registered in Redis (from asynq:workers:* keys)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.WorkersResponse'
+      summary: List all workers
+      tags:
+      - workers
+  /workers/{worker_id}:
+    get:
+      description: Returns details for a specific worker by ID
+      parameters:
+      - description: Worker ID
+        in: path
+        name: worker_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.WorkerInfo'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get worker details
+      tags:
+      - workers
+  /workers/config/{queue_name}:
+    get:
+      description: Retrieve queue configuration
+      parameters:
+      - description: Queue name
+        in: path
+        name: queue_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/queueworker.QueueConfig'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get queue configuration
+      tags:
+      - workers
+  /workers/handshake:
+    post:
+      consumes:
+      - application/json
+      description: Register worker and retrieve queue configuration
+      parameters:
+      - description: Handshake request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.HandshakeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.WorkerConfigResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HandshakeErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.HandshakeErrorResponse'
+      summary: Worker handshake
+      tags:
+      - workers
+  /workers/queues:
+    get:
+      description: List all registered queue configurations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.QueuesListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List all queue configurations
+      tags:
+      - workers
+    post:
+      consumes:
+      - application/json
+      description: Create a new queue configuration from JSON payload
+      parameters:
+      - description: Queue configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateQueueRequest'
+      - description: Force update if queue already exists
+        in: query
+        name: force
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.CreateQueueResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new queue configuration
+      tags:
+      - workers
+  /workers/queues/{queue_name}:
+    delete:
+      description: Delete a queue configuration by name (soft-delete)
+      parameters:
+      - description: Queue name
+        in: path
+        name: queue_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a queue configuration
+      tags:
+      - workers
+  /workers/queues/{queue_name}/restore:
+    post:
+      description: Restore a soft-deleted queue configuration by name
+      parameters:
+      - description: Queue name
+        in: path
+        name: queue_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Restore a queue configuration
+      tags:
+      - workers
+  /workers/reload:
+    post:
+      description: Reload all queue configurations from YAML files (admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ReloadResponse'
+      summary: Reload queue configurations from YAML files
+      tags:
+      - workers
 swagger: "2.0"
