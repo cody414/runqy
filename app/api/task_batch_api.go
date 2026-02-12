@@ -97,14 +97,7 @@ func AddTaskBatch(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFun
 		var taskEntries []taskEntry
 
 		for i, jobData := range req.Jobs {
-			// Extract "data" field if present (matches single enqueue behavior)
 			payload := json.RawMessage(jobData)
-			var jobMap map[string]json.RawMessage
-			if err := json.Unmarshal(jobData, &jobMap); err == nil {
-				if dataField, ok := jobMap["data"]; ok {
-					payload = dataField
-				}
-			}
 
 			// Create task
 			task, err := t.NewGenericTask(queue, payload)
@@ -200,14 +193,7 @@ func AddTaskBatchDirect(qwConfigDir string, qwStore *queueworker.Store) gin.Hand
 		pipe := rdb.Pipeline()
 
 		for _, jobData := range req.Jobs {
-			// Extract "data" field if present (matches single enqueue behavior)
 			payload := json.RawMessage(jobData)
-			var jobMap map[string]json.RawMessage
-			if err := json.Unmarshal(jobData, &jobMap); err == nil {
-				if dataField, ok := jobMap["data"]; ok {
-					payload = dataField
-				}
-			}
 
 			task, err := t.NewGenericTask(queue, payload)
 			if err != nil {
