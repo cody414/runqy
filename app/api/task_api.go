@@ -97,7 +97,7 @@ func GetTaskStatus(c *gin.Context) {
 //
 // AddTask returns a handler that validates the incoming task `data` against
 // the queue worker YAML schemas found in `qwConfigDir` before enqueuing.
-func AddTask(qwConfigDir string) gin.HandlerFunc {
+func AddTask(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
         // Parse as raw JSON to support both flat and nested formats
         var rawBody map[string]json.RawMessage
@@ -121,6 +121,17 @@ func AddTask(qwConfigDir string) gin.HandlerFunc {
 
         // Normalize queue name: if no sub-queue specified, append .default
         queue = queueworker.NormalizeQueueName(queue)
+
+        // Validate queue exists in database
+        exists, err := qwStore.Exists(c.Request.Context(), queue)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"failed to check queue: " + err.Error()}})
+            return
+        }
+        if !exists {
+            c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"queue not found: " + queue}})
+            return
+        }
 
         // Extract timeout (required)
         var timeout int64

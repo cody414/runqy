@@ -42,7 +42,7 @@ type BatchTaskResponse struct {
 //	@Router			/queue/add-batch [post]
 //
 // AddTaskBatch returns a handler that enqueues multiple tasks using Redis pipelining
-func AddTaskBatch(qwConfigDir string) gin.HandlerFunc {
+func AddTaskBatch(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req BatchTaskRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -57,6 +57,17 @@ func AddTaskBatch(qwConfigDir string) gin.HandlerFunc {
 
 		// Normalize queue name
 		queue := queueworker.NormalizeQueueName(req.Queue)
+
+		// Validate queue exists in database
+		exists, err := qwStore.Exists(c.Request.Context(), queue)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"failed to check queue: " + err.Error()}})
+			return
+		}
+		if !exists {
+			c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"queue not found: " + queue}})
+			return
+		}
 
 		// Get timeout (default 30s)
 		timeout := req.Timeout
@@ -86,8 +97,17 @@ func AddTaskBatch(qwConfigDir string) gin.HandlerFunc {
 		var taskEntries []taskEntry
 
 		for i, jobData := range req.Jobs {
+			// Extract "data" field if present (matches single enqueue behavior)
+			payload := json.RawMessage(jobData)
+			var jobMap map[string]json.RawMessage
+			if err := json.Unmarshal(jobData, &jobMap); err == nil {
+				if dataField, ok := jobMap["data"]; ok {
+					payload = dataField
+				}
+			}
+
 			// Create task
-			task, err := t.NewGenericTask(queue, jobData)
+			task, err := t.NewGenericTask(queue, payload)
 			if err != nil {
 				response.Failed++
 				response.Errors = append(response.Errors, err.Error())
@@ -137,7 +157,7 @@ func AddTaskBatch(qwConfigDir string) gin.HandlerFunc {
 // and writes directly to Redis using pipelining for maximum throughput.
 // Use this when you need absolute maximum performance and can accept
 // slightly reduced feature set (no per-job options).
-func AddTaskBatchDirect(qwConfigDir string) gin.HandlerFunc {
+func AddTaskBatchDirect(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req BatchTaskRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -152,6 +172,17 @@ func AddTaskBatchDirect(qwConfigDir string) gin.HandlerFunc {
 
 		// Normalize queue name
 		queue := queueworker.NormalizeQueueName(req.Queue)
+
+		// Validate queue exists in database
+		exists, err := qwStore.Exists(c.Request.Context(), queue)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"failed to check queue: " + err.Error()}})
+			return
+		}
+		if !exists {
+			c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"queue not found: " + queue}})
+			return
+		}
 
 		// Get redis client
 		rdb := c.Keys["rdb"].(*redis.Client)
@@ -169,7 +200,16 @@ func AddTaskBatchDirect(qwConfigDir string) gin.HandlerFunc {
 		pipe := rdb.Pipeline()
 
 		for _, jobData := range req.Jobs {
-			task, err := t.NewGenericTask(queue, jobData)
+			// Extract "data" field if present (matches single enqueue behavior)
+			payload := json.RawMessage(jobData)
+			var jobMap map[string]json.RawMessage
+			if err := json.Unmarshal(jobData, &jobMap); err == nil {
+				if dataField, ok := jobMap["data"]; ok {
+					payload = dataField
+				}
+			}
+
+			task, err := t.NewGenericTask(queue, payload)
 			if err != nil {
 				response.Failed++
 				response.Errors = append(response.Errors, err.Error())

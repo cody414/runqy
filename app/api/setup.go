@@ -25,23 +25,24 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 	router_predict.GET("/:uuid", GetTaskStatus)
 	// api POST queue
 	router_predict.Use(Authorize())
-	router_predict.POST("/add", AddTask(qwConfigDir))
-	router_predict.POST("/add-batch", AddTaskBatch(qwConfigDir))
+	router_predict.POST("/add", AddTask(qwConfigDir, qwStore))
+	router_predict.POST("/add-batch", AddTaskBatch(qwConfigDir, qwStore))
 
-	// Workers API - reads from asynq:workers keys (matching runqy-worker)
+	// Workers API
 	router_workers := r.Group("workers")
-	router_workers.GET("", ListWorkers)
-	router_workers.GET("/:worker_id", GetWorker)
+
+	// Public queue config endpoint (used by workers during bootstrap)
+	router_workers.GET("/config/:queue_name", GetQueueConfig(qwStore))
 
 	// Worker registration endpoint - workers are trusted, no API key validation
 	router_worker := r.Group("worker")
+	router_worker.Use(Authorize())
 	router_worker.POST("/register", WorkerHandshake(qwStore, cfg))
 
-	// Public queue config endpoint
-	router_workers.GET("/config/:queue_name", GetQueueConfig(qwStore))
-
-	// Admin-only endpoints - require global RUNQY_API_KEY
+	// All other endpoints require API key
 	router_workers.Use(Authorize())
+	router_workers.GET("", ListWorkers)
+	router_workers.GET("/:worker_id", GetWorker)
 	router_workers.GET("/queues", ListQueueConfigs(qwStore))
 	router_workers.POST("/queues", CreateQueueConfig(qwStore))
 	router_workers.DELETE("/queues/:queue_name", DeleteQueueConfig(qwStore))
