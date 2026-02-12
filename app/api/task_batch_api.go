@@ -18,7 +18,7 @@ import (
 type BatchTaskRequest struct {
 	Queue   string            `json:"queue" binding:"required"`
 	Timeout int64             `json:"timeout"` // Default timeout for all jobs
-	Jobs    []json.RawMessage `json:"jobs" binding:"required"`
+	Jobs    []json.RawMessage `json:"jobs" binding:"required" swaggertype:"array,object"`
 }
 
 // BatchTaskResponse contains the results of batch enqueue

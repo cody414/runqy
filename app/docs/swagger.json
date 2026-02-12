@@ -3,12 +3,371 @@
     "info": {
         "description": "Task queueing service built on asynq for managing distributed task processing",
         "title": "Runqy Queue API",
+        "contact": {},
         "version": "1.0.0"
     },
     "paths": {
+        "/api/vaults": {
+            "get": {
+                "description": "List all vaults with entry counts",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vaults"
+                ],
+                "summary": "List all vaults",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.VaultsListResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new vault with the given name and description",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vaults"
+                ],
+                "summary": "Create a new vault",
+                "parameters": [
+                    {
+                        "description": "Vault creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateVaultRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/vaults/{name}": {
+            "get": {
+                "description": "Get vault details with entries (secret values masked)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vaults"
+                ],
+                "summary": "Get vault details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vault name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/vaults.VaultDetail"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a vault and all its entries",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vaults"
+                ],
+                "summary": "Delete a vault",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vault name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/vaults/{name}/entries": {
+            "get": {
+                "description": "List all entries in a vault (secret values masked)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vaults"
+                ],
+                "summary": "List vault entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vault name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Set or update a key-value pair in a vault",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vaults"
+                ],
+                "summary": "Set a vault entry",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vault name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Entry to set",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SetEntryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/vaults/{name}/entries/{key}": {
+            "delete": {
+                "description": "Remove a key-value pair from a vault",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vaults"
+                ],
+                "summary": "Delete a vault entry",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vault name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Entry key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/queue/add": {
             "post": {
-                "description": "Send a prediction request. Set `provider` to route to different backends:\n- `\"\"` or `\"worker\"`: External workers (SDXL) - uses num_steps, guidance_scale, seed, negative_prompt, scheduler, model_name\n- `\"azure\"`: Azure OpenAI DALL-E - uses quality (\"hd\"/\"standard\")\nCommon fields: prompt (required), width, height, batch_nbr. Unused fields are ignored.",
+                "description": "Send a generic task request with queue, timeout, and a flexible JSON payload.",
                 "consumes": [
                     "application/json"
                 ],
@@ -18,22 +377,15 @@
                 "tags": [
                     "queue"
                 ],
-                "summary": "Send a new predict to the queuer",
+                "summary": "Send a new task to the queuer",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "The type of the generation either image or video",
-                        "name": "type",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "{object}",
-                        "name": "predict",
+                        "description": "Task with queue, timeout, and payload",
+                        "name": "task",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.Predict"
+                            "$ref": "#/definitions/models.GenericTask"
                         }
                     }
                 ],
@@ -41,7 +393,47 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.ResponsePost"
+                            "$ref": "#/definitions/models.GenericResponsePost"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.APIErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/queue/add-batch": {
+            "post": {
+                "description": "Batch enqueue for high-throughput job submission. Uses Redis pipelining for optimal performance.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "queue"
+                ],
+                "summary": "Send multiple tasks to the queue in a single request",
+                "parameters": [
+                    {
+                        "description": "Batch of tasks with queue and jobs array",
+                        "name": "batch",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.BatchTaskRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.BatchTaskResponse"
                         }
                     },
                     "400": {
@@ -96,9 +488,738 @@
                     }
                 }
             }
+        },
+        "/worker/register": {
+            "post": {
+                "description": "Register worker and retrieve queue configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workers"
+                ],
+                "summary": "Worker handshake",
+                "parameters": [
+                    {
+                        "description": "Handshake request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.HandshakeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkerConfigResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HandshakeErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.HandshakeErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workers": {
+            "get": {
+                "description": "Returns all workers registered in Redis (from asynq:workers:* keys)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workers"
+                ],
+                "summary": "List all workers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkersResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workers/config/{queue_name}": {
+            "get": {
+                "description": "Retrieve queue configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workers"
+                ],
+                "summary": "Get queue configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Queue name",
+                        "name": "queue_name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/queueworker.QueueConfig"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workers/handshake": {
+            "post": {
+                "description": "Register worker and retrieve queue configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workers"
+                ],
+                "summary": "Worker handshake",
+                "parameters": [
+                    {
+                        "description": "Handshake request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.HandshakeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkerConfigResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HandshakeErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.HandshakeErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workers/queues": {
+            "get": {
+                "description": "List all registered queue configurations",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workers"
+                ],
+                "summary": "List all queue configurations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.QueuesListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new queue configuration from JSON payload",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workers"
+                ],
+                "summary": "Create a new queue configuration",
+                "parameters": [
+                    {
+                        "description": "Queue configuration",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateQueueRequest"
+                        }
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Force update if queue already exists",
+                        "name": "force",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateQueueResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workers/queues/{queue_name}": {
+            "delete": {
+                "description": "Delete a queue configuration by name (soft-delete)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workers"
+                ],
+                "summary": "Delete a queue configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Queue name",
+                        "name": "queue_name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workers/queues/{queue_name}/restore": {
+            "post": {
+                "description": "Restore a soft-deleted queue configuration by name",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workers"
+                ],
+                "summary": "Restore a queue configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Queue name",
+                        "name": "queue_name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workers/reload": {
+            "post": {
+                "description": "Reload all queue configurations from YAML files (admin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workers"
+                ],
+                "summary": "Reload queue configurations from YAML files",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ReloadResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workers/{worker_id}": {
+            "get": {
+                "description": "Returns details for a specific worker by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workers"
+                ],
+                "summary": "Get worker details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Worker ID",
+                        "name": "worker_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkerInfo"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "api.BatchTaskRequest": {
+            "type": "object",
+            "required": [
+                "jobs",
+                "queue"
+            ],
+            "properties": {
+                "jobs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "queue": {
+                    "type": "string"
+                },
+                "timeout": {
+                    "description": "Default timeout for all jobs",
+                    "type": "integer"
+                }
+            }
+        },
+        "api.BatchTaskResponse": {
+            "type": "object",
+            "properties": {
+                "enqueued": {
+                    "type": "integer"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "failed": {
+                    "type": "integer"
+                },
+                "task_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.CreateQueueRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "priority"
+            ],
+            "properties": {
+                "deployment": {
+                    "$ref": "#/definitions/queueworker.DeploymentConfig"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "provider": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CreateQueueResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "queue": {
+                    "$ref": "#/definitions/queueworker.QueueConfig"
+                }
+            }
+        },
+        "api.CreateVaultRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.HandshakeErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.HandshakeRequest": {
+            "type": "object",
+            "properties": {
+                "hostname": {
+                    "type": "string"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "queue": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.QueuesListResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "queues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/queueworker.QueueSummary"
+                    }
+                }
+            }
+        },
+        "api.ReloadResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "reloaded": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "timestamp": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.SetEntryRequest": {
+            "type": "object",
+            "required": [
+                "key",
+                "value"
+            ],
+            "properties": {
+                "is_secret": {
+                    "description": "Defaults to true if not provided",
+                    "type": "boolean"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SubQueueConfig": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.VaultsListResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "vaults": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/vaults.VaultSummary"
+                    }
+                }
+            }
+        },
+        "api.WorkerConfigResponse": {
+            "type": "object",
+            "properties": {
+                "deployment": {
+                    "$ref": "#/definitions/api.WorkerDeploymentConfig"
+                },
+                "git_token": {
+                    "description": "Resolved git token for authentication",
+                    "type": "string"
+                },
+                "queue": {
+                    "$ref": "#/definitions/api.WorkerQueueConfig"
+                },
+                "redis": {
+                    "$ref": "#/definitions/api.WorkerRedisConfig"
+                },
+                "sub_queues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.SubQueueConfig"
+                    }
+                },
+                "vaults": {
+                    "description": "Decrypted vault key-value pairs",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.WorkerDeploymentConfig": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "type": "string"
+                },
+                "code_path": {
+                    "type": "string"
+                },
+                "git_url": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "redis_storage": {
+                    "type": "boolean"
+                },
+                "startup_cmd": {
+                    "type": "string"
+                },
+                "startup_timeout_secs": {
+                    "type": "integer"
+                },
+                "vaults": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.WorkerInfo": {
+            "type": "object",
+            "properties": {
+                "concurrency": {
+                    "type": "integer"
+                },
+                "is_stale": {
+                    "description": "True if last_beat \u003e 30s ago",
+                    "type": "boolean"
+                },
+                "last_beat": {
+                    "type": "integer"
+                },
+                "queues": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "worker_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.WorkerQueueConfig": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.WorkerRedisConfig": {
+            "type": "object",
+            "properties": {
+                "addr": {
+                    "type": "string"
+                },
+                "db": {
+                    "type": "integer"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "use_tls": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.WorkersResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "workers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.WorkerInfo"
+                    }
+                }
+            }
+        },
         "models.APIErrorResponse": {
             "type": "object",
             "properties": {
@@ -167,6 +1288,31 @@
                 }
             }
         },
+        "models.GenericResponsePost": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object"
+                },
+                "info": {
+                    "$ref": "#/definitions/models.AddTaskInfoDoc"
+                }
+            }
+        },
+        "models.GenericTask": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object"
+                },
+                "queue": {
+                    "type": "string"
+                },
+                "timeout": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.GetTaskInfoDoc": {
             "type": "object",
             "properties": {
@@ -217,128 +1363,6 @@
                 }
             }
         },
-        "models.Predict": {
-            "type": "object",
-            "properties": {
-                "enqueued_at": {
-                    "type": "integer"
-                },
-                "model_input": {
-                    "$ref": "#/definitions/models.Request"
-                },
-                "predict_id": {
-                    "type": "integer"
-                },
-                "provider": {
-                    "description": "\"azure\", \"openai\", \"google\", \"worker\" or empty (default: worker)",
-                    "type": "string"
-                },
-                "queue": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "timeout": {
-                    "type": "integer"
-                },
-                "user_id": {
-                    "type": "integer"
-                },
-                "webhook_url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.Request": {
-            "type": "object",
-            "properties": {
-                "batch_nbr": {
-                    "description": "BatchNbr is the number of images to generate (all providers)",
-                    "type": "integer"
-                },
-                "clip_skip": {
-                    "description": "ClipSkip is the number of CLIP layers to skip (worker/SDXL only)",
-                    "type": "integer"
-                },
-                "decode_noise_scale": {
-                    "description": "DecodeNoiseScale for video decode process (worker/SDXL only)",
-                    "type": "number"
-                },
-                "decode_timesteps": {
-                    "description": "DecodeTimesteps for video decode process (worker/SDXL only)",
-                    "type": "number"
-                },
-                "fps": {
-                    "description": "FPS is the frames per second for video output (worker/SDXL only)",
-                    "type": "integer"
-                },
-                "guidance_scale": {
-                    "description": "GuidanceScale controls how closely to follow the prompt (worker/SDXL only)",
-                    "type": "number"
-                },
-                "height": {
-                    "description": "Height of the output image in pixels (all providers)",
-                    "type": "integer"
-                },
-                "id": {
-                    "description": "ID is the request identifier (all providers)",
-                    "type": "string"
-                },
-                "img_url": {
-                    "description": "ImgURL is the input image URL for img2img generation (worker/SDXL only)",
-                    "type": "string"
-                },
-                "model_name": {
-                    "description": "ModelName is the model to use. Worker: SDXL model name. Azure: \"gpt-image-1\", \"gpt-image-1.5\", \"flux.2-pro\", \"flux-1.1-pro\" (required)",
-                    "type": "string"
-                },
-                "negative_prompt": {
-                    "description": "NegativePrompt specifies what to avoid in generation (worker/SDXL only)",
-                    "type": "string"
-                },
-                "num_frames": {
-                    "description": "NumFrames is the number of frames for video generation (worker/SDXL only)",
-                    "type": "integer"
-                },
-                "num_steps": {
-                    "description": "NumSteps is the number of diffusion steps (worker/SDXL only)",
-                    "type": "integer"
-                },
-                "output_compression": {
-                    "description": "OutputCompression controls image compression 0-100 (Azure: gpt-image-1, gpt-image-1.5 only)",
-                    "type": "integer"
-                },
-                "output_format": {
-                    "description": "OutputFormat specifies output format: \"png\", \"jpeg\" (Azure: gpt-image-1, gpt-image-1.5, flux-1.1-pro)",
-                    "type": "string"
-                },
-                "prompt": {
-                    "description": "Prompt is the text prompt for generation - REQUIRED (all providers)",
-                    "type": "string"
-                },
-                "quality": {
-                    "description": "Quality level: \"hd\", \"standard\" (Azure: dall-e-3, gpt-image-1 only - not flux)",
-                    "type": "string"
-                },
-                "scheduler": {
-                    "description": "Scheduler is the sampling scheduler to use (worker/SDXL only)",
-                    "type": "string"
-                },
-                "seed": {
-                    "description": "Seed for reproducible generation (worker/SDXL only)",
-                    "type": "integer"
-                },
-                "webhook_url": {
-                    "description": "URL is an alternative webhook URL field (all providers)",
-                    "type": "string"
-                },
-                "width": {
-                    "description": "Width of the output image in pixels (all providers)",
-                    "type": "integer"
-                }
-            }
-        },
         "models.ResponseGet": {
             "type": "object",
             "properties": {
@@ -347,14 +1371,135 @@
                 }
             }
         },
-        "models.ResponsePost": {
+        "queueworker.DeploymentConfig": {
             "type": "object",
             "properties": {
-                "info": {
-                    "$ref": "#/definitions/models.AddTaskInfoDoc"
+                "branch": {
+                    "type": "string"
                 },
-                "userPredict": {
-                    "$ref": "#/definitions/models.Predict"
+                "code_path": {
+                    "type": "string"
+                },
+                "git_token": {
+                    "description": "Vault reference for git auth: \"vault://vault-name/key\"",
+                    "type": "string"
+                },
+                "git_url": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "redis_storage": {
+                    "type": "boolean"
+                },
+                "startup_cmd": {
+                    "type": "string"
+                },
+                "startup_timeout_secs": {
+                    "type": "integer"
+                },
+                "vaults": {
+                    "description": "List of vault names to inject as env vars",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "queueworker.QueueConfig": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "integer"
+                },
+                "deployment": {
+                    "$ref": "#/definitions/queueworker.DeploymentConfig"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                }
+            }
+        },
+        "queueworker.QueueSummary": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "provider": {
+                    "type": "string"
+                }
+            }
+        },
+        "vaults.VaultDetail": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/vaults.VaultEntryView"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "vaults.VaultEntryView": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "is_secret": {
+                    "type": "boolean"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "value": {
+                    "description": "Masked if IsSecret is true",
+                    "type": "string"
+                }
+            }
+        },
+        "vaults.VaultSummary": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "entry_count": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         }

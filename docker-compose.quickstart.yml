@@ -72,7 +72,7 @@ services:
     environment:
       RUNQY_SERVER_URL: http://runqy-server:3000
       RUNQY_API_KEY: dev-api-key
-      RUNQY_QUEUES: quickstart-longrunning_default,quickstart-oneshot_default
+      RUNQY_QUEUES: quickstart-longrunning.default,quickstart-oneshot.default
     volumes:
       - worker_deployment:/app/deployment
     depends_on:

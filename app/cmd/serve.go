@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Publikey/runqy/api"
@@ -345,9 +346,9 @@ func runServe(cmd *cobra.Command, args []string) {
 		Handler: router,
 	}
 
-	// Handle OS interrupt signal
+	// Handle OS shutdown signals
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	// Print startup banner
 	PrintStartupBanner(startupCfg)
@@ -361,8 +362,8 @@ func runServe(cmd *cobra.Command, args []string) {
 		}
 	}()
 
-	<-quit
-	log.Println("Shutdown signal received")
+	sig := <-quit
+	log.Printf("Received %v, shutting down...", sig)
 
 	// Stop watchers
 	if configWatcher != nil {
@@ -381,7 +382,5 @@ func runServe(cmd *cobra.Command, args []string) {
 	}
 
 	wg.Wait()
-	if debugMode {
-		log.Println("[INFO] All goroutines exited")
-	}
+	log.Println("Server shutdown complete")
 }
