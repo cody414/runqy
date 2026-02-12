@@ -75,7 +75,7 @@
 	});
 
 	function navigateToQueue(qname: string) {
-		goto(`/queues/${encodeURIComponent(qname)}`);
+		goto(`${base}/queues/${encodeURIComponent(qname)}`);
 	}
 </script>
 
@@ -116,7 +116,7 @@
 		<StatCard label="Active" value={$totalStats.totalActive} variant="success" />
 		<StatCard label="Processed" value={$totalStats.totalProcessed} variant="default" />
 		<StatCard label="Failed" value={$totalStats.totalFailed} variant="error" />
-		<StatCard label="Workers" value={$workerStats.total} variant="primary" href="{base}/workers" />
+		<StatCard label="Workers" value={$workerStats.total} variant="primary" href="/workers" />
 	</div>
 
 	<!-- Charts Section -->
