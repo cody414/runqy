@@ -3,6 +3,7 @@
 	import { scaleBand, scaleLinear } from 'd3-scale';
 	import { queuesStore } from '$lib/stores/queues';
 	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 
 	interface Props {
 		height?: number;
@@ -87,7 +88,7 @@
 	}
 
 	function handleQueueClick(qname: string) {
-		goto(`/queues/${encodeURIComponent(qname)}`);
+		goto(`${base}/queues/${encodeURIComponent(qname)}`);
 	}
 </script>
 
