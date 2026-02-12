@@ -13,25 +13,33 @@ import (
 
 func Authorize() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		method := c.Request.Method
-		if method == http.MethodPost || method == http.MethodPut {
-			authHeader := c.GetHeader("Authorization")
-			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, models.APIErrorResponse{Errors: []string{"access unauthorized"}})
-				return
-			}
+		expectedKey := os.Getenv("RUNQY_API_KEY")
 
-			providedKey := strings.TrimPrefix(authHeader, "Bearer ")
-			expectedKey := os.Getenv("RUNQY_API_KEY")
-
-			providedHash := sha256.Sum256([]byte(providedKey))
-			expectedHash := sha256.Sum256([]byte(expectedKey))
-
-			if subtle.ConstantTimeCompare(providedHash[:], expectedHash[:]) != 1 {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, models.APIErrorResponse{Errors: []string{"access unauthorized"}})
-				return
-			}
+		// Try Authorization: Bearer header first
+		providedKey := ""
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			providedKey = strings.TrimPrefix(authHeader, "Bearer ")
 		}
+
+		// Fallback to X-API-Key header
+		if providedKey == "" {
+			providedKey = c.GetHeader("X-API-Key")
+		}
+
+		if providedKey == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, models.APIErrorResponse{Errors: []string{"access unauthorized"}})
+			return
+		}
+
+		providedHash := sha256.Sum256([]byte(providedKey))
+		expectedHash := sha256.Sum256([]byte(expectedKey))
+
+		if subtle.ConstantTimeCompare(providedHash[:], expectedHash[:]) != 1 {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, models.APIErrorResponse{Errors: []string{"access unauthorized"}})
+			return
+		}
+
 		c.Next()
 	}
 }
