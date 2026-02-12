@@ -2,7 +2,327 @@
 @import '@skeletonlabs/skeleton/themes/cerberus';
 @import '@skeletonlabs/skeleton';
 
-/* Scrollbar styles */
+/* ============================================
+   Runqy Brand Tokens
+   ============================================ */
+:root {
+	--runqy-primary: #3B82F6;
+	--runqy-accent: #3DCFBC;
+	--runqy-bg-dark: #0a0a0f;
+	--runqy-border-subtle: rgba(255,255,255,0.06);
+	--runqy-border-default: rgba(255,255,255,0.08);
+}
+
+/* ============================================
+   Dark Theme Surface Overrides
+   ============================================ */
+.dark {
+	--color-surface-900: #0a0a0f;
+	--color-surface-800: #111118;
+	--color-surface-700: #16161f;
+}
+
+/* ============================================
+   Layout
+   ============================================ */
+.main-content {
+	background: var(--runqy-bg-dark);
+}
+
+.rq-page {
+	padding: 2rem 2.5rem;
+	max-width: 1440px;
+	margin: 0 auto;
+}
+
+.rq-page-header {
+	padding-bottom: 1.5rem;
+	border-bottom: 1px solid var(--runqy-border-subtle);
+	margin-bottom: 2rem;
+}
+
+.rq-page-title {
+	font-size: 1.5rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.rq-page-subtitle {
+	font-size: 0.875rem;
+	color: var(--color-surface-400);
+	margin-top: 0.25rem;
+}
+
+/* ============================================
+   Cards
+   ============================================ */
+.rq-card {
+	background: var(--color-surface-800);
+	border: 1px solid var(--runqy-border-subtle);
+	border-radius: 0.75rem;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.rq-card-interactive {
+	transition: border-color 150ms ease, box-shadow 150ms ease;
+	cursor: pointer;
+}
+
+.rq-card-interactive:hover {
+	border-color: rgba(59,130,246,0.35);
+	box-shadow: 0 4px 12px rgba(59,130,246,0.08), 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Tinted stat card backgrounds */
+.rq-tint-primary {
+	background: linear-gradient(135deg, rgba(59,130,246,0.06) 0%, var(--color-surface-800) 100%);
+}
+
+.rq-tint-success {
+	background: linear-gradient(135deg, rgba(34,197,94,0.06) 0%, var(--color-surface-800) 100%);
+}
+
+.rq-tint-warning {
+	background: linear-gradient(135deg, rgba(234,179,8,0.06) 0%, var(--color-surface-800) 100%);
+}
+
+.rq-tint-error {
+	background: linear-gradient(135deg, rgba(239,68,68,0.06) 0%, var(--color-surface-800) 100%);
+}
+
+/* Metric sub-boxes inside cards */
+.rq-metric-box {
+	padding: 0.75rem;
+	border-radius: 0.5rem;
+	background: rgba(255,255,255,0.03);
+	border: 1px solid var(--runqy-border-subtle);
+}
+
+/* ============================================
+   Section Titles
+   ============================================ */
+.rq-section-title {
+	font-size: 0.7rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--color-surface-400);
+}
+
+/* ============================================
+   Pills (Filter Buttons)
+   ============================================ */
+.rq-pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.375rem 0.875rem;
+	font-size: 0.8125rem;
+	font-weight: 500;
+	border-radius: 9999px;
+	border: 1px solid var(--runqy-border-default);
+	background: transparent;
+	color: var(--color-surface-400);
+	transition: all 150ms ease;
+	cursor: pointer;
+}
+
+.rq-pill:hover {
+	border-color: rgba(255,255,255,0.15);
+	color: var(--color-surface-200);
+}
+
+.rq-pill-active {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.375rem 0.875rem;
+	font-size: 0.8125rem;
+	font-weight: 500;
+	border-radius: 9999px;
+	border: 1px solid rgba(59,130,246,0.4);
+	background: rgba(59,130,246,0.1);
+	color: #60a5fa;
+	cursor: pointer;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+.rq-btn-primary {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 1rem;
+	font-size: 0.875rem;
+	font-weight: 500;
+	border-radius: 0.5rem;
+	background: var(--runqy-primary);
+	color: white;
+	border: none;
+	cursor: pointer;
+	transition: background 150ms ease, box-shadow 150ms ease;
+}
+
+.rq-btn-primary:hover {
+	background: #2563EB;
+	box-shadow: 0 2px 8px rgba(59,130,246,0.25);
+}
+
+.rq-btn-success {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 1rem;
+	font-size: 0.875rem;
+	font-weight: 500;
+	border-radius: 0.5rem;
+	background: rgb(34, 197, 94);
+	color: white;
+	border: none;
+	cursor: pointer;
+	transition: background 150ms ease, box-shadow 150ms ease;
+}
+
+.rq-btn-success:hover {
+	background: rgb(22, 163, 74);
+	box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
+}
+
+.rq-btn-ghost {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 0.75rem;
+	font-size: 0.875rem;
+	font-weight: 500;
+	border-radius: 0.5rem;
+	background: transparent;
+	color: var(--color-surface-400);
+	border: 1px solid var(--runqy-border-default);
+	cursor: pointer;
+	transition: all 150ms ease;
+}
+
+.rq-btn-ghost:hover {
+	border-color: rgba(255,255,255,0.15);
+	color: var(--color-surface-200);
+	background: rgba(255,255,255,0.03);
+}
+
+/* ============================================
+   Tables
+   ============================================ */
+.rq-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.rq-table thead th {
+	font-size: 0.7rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--color-surface-400);
+	padding: 0.75rem 1rem;
+	border-bottom: 1px solid var(--runqy-border-default);
+	text-align: left;
+}
+
+.rq-table tbody td {
+	padding: 0.75rem 1rem;
+	border-bottom: 1px solid var(--runqy-border-subtle);
+	font-size: 0.875rem;
+}
+
+.rq-table tbody tr:hover {
+	background: rgba(255,255,255,0.02);
+}
+
+.rq-table tbody tr:nth-child(even) {
+	background: rgba(255,255,255,0.01);
+}
+
+.rq-table tbody tr:nth-child(even):hover {
+	background: rgba(255,255,255,0.03);
+}
+
+/* ============================================
+   Sidebar
+   ============================================ */
+.rq-sidebar {
+	background: var(--color-surface-800);
+	border-right: 1px solid var(--runqy-border-subtle);
+}
+
+.rq-sidebar-nav-item {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding: 0.75rem 1.25rem;
+	border-radius: 0.5rem;
+	border-left: 3px solid transparent;
+	color: var(--color-surface-400);
+	font-weight: 500;
+	font-size: 0.9375rem;
+	transition: all 150ms ease;
+	text-decoration: none;
+}
+
+.rq-sidebar-nav-item:hover {
+	color: var(--color-surface-200);
+	background: rgba(255,255,255,0.04);
+}
+
+.rq-sidebar-nav-item-active {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding: 0.75rem 1.25rem;
+	border-radius: 0.5rem;
+	border-left: 3px solid var(--runqy-primary);
+	color: white;
+	background: rgba(59,130,246,0.08);
+	font-weight: 500;
+	font-size: 0.9375rem;
+	text-decoration: none;
+}
+
+/* ============================================
+   Progress Bars
+   ============================================ */
+.rq-progress-track {
+	width: 100%;
+	height: 0.375rem;
+	background: rgba(255,255,255,0.06);
+	border-radius: 9999px;
+	overflow: hidden;
+}
+
+.rq-progress-bar {
+	height: 100%;
+	border-radius: 9999px;
+	transition: width 300ms ease;
+}
+
+/* ============================================
+   Empty States
+   ============================================ */
+.rq-empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 3rem 2rem;
+	text-align: center;
+}
+
+.rq-empty-state svg {
+	opacity: 0.3;
+	margin-bottom: 1rem;
+}
+
+/* ============================================
+   Scrollbar styles
+   ============================================ */
 .scrollbar-thin {
 	scrollbar-width: thin;
 }
@@ -46,6 +366,10 @@
 .json-null {
 	color: var(--color-surface-500);
 }
+
+/* ============================================
+   Charts (layerchart axis labels fix for dark theme)
+   ============================================ */
 
 /* Refresh button animation */
 @keyframes spin {

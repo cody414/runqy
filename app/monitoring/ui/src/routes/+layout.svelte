@@ -78,7 +78,7 @@
 </script>
 
 {#if showLoading}
-	<div class="min-h-screen flex items-center justify-center bg-surface-100 dark:bg-surface-900">
+	<div class="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
 		<div class="text-center">
 			<div class="animate-spin mb-4">
 				<svg class="w-8 h-8 mx-auto text-primary-500" fill="none" viewBox="0 0 24 24">

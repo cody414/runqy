@@ -5,7 +5,7 @@
 
 	interface Props {
 		tasks?: Task[];
-		state: TaskState;
+		taskState: TaskState;
 		loading?: boolean;
 		selectedIds?: Set<string>;
 		onselect?: (detail: { id: string; selected: boolean }) => void;
@@ -15,7 +15,7 @@
 
 	let {
 		tasks = [],
-		state,
+		taskState,
 		loading = false,
 		selectedIds = new Set(),
 		onselect,
@@ -39,11 +39,11 @@
 	let allSelected = $derived(filteredTasks.length > 0 && filteredTasks.every((t) => selectedIds.has(t.id)));
 	let someSelected = $derived(filteredTasks.some((t) => selectedIds.has(t.id)));
 
-	// Determine which actions are available based on state
-	let canCancel = $derived(state === 'active');
-	let canRun = $derived(state === 'scheduled' || state === 'retry' || state === 'archived');
-	let canArchive = $derived(state === 'pending' || state === 'scheduled' || state === 'retry');
-	let canDelete = $derived(state !== 'active');
+	// Determine which actions are available based on taskState
+	let canCancel = $derived(taskState === 'active');
+	let canRun = $derived(taskState === 'scheduled' || taskState === 'retry' || taskState === 'archived');
+	let canArchive = $derived(taskState === 'pending' || taskState === 'scheduled' || taskState === 'retry');
+	let canDelete = $derived(taskState !== 'active');
 
 	function toggleExpand(taskId: string) {
 		expandedId = expandedId === taskId ? null : taskId;
@@ -103,7 +103,7 @@
 
 	<!-- Table -->
 	<div class="table-container">
-		<table class="table table-hover">
+		<table class="rq-table">
 			<thead>
 				<tr>
 					<th class="w-10">
@@ -118,16 +118,16 @@
 					<th>Task ID</th>
 					<th>Type</th>
 					<th>Queue</th>
-					{#if state === 'retry' || state === 'archived'}
+					{#if taskState === 'retry' || taskState === 'archived'}
 						<th>Retries</th>
 					{/if}
-					{#if state === 'scheduled' || state === 'retry'}
+					{#if taskState === 'scheduled' || taskState === 'retry'}
 						<th>Next Run</th>
 					{/if}
-					{#if state === 'completed'}
+					{#if taskState === 'completed'}
 						<th>Completed</th>
 					{/if}
-					{#if state === 'archived'}
+					{#if taskState === 'archived'}
 						<th>Last Error</th>
 					{/if}
 					<th class="w-24">Actions</th>
@@ -190,22 +190,22 @@
 								<span class="badge preset-outlined-secondary-500 text-xs">{task.type}</span>
 							</td>
 							<td class="text-sm text-surface-600 dark:text-surface-400">{task.queue}</td>
-							{#if state === 'retry' || state === 'archived'}
+							{#if taskState === 'retry' || taskState === 'archived'}
 								<td class="text-sm">
 									{task.retried}/{task.max_retry}
 								</td>
 							{/if}
-							{#if state === 'scheduled' || state === 'retry'}
+							{#if taskState === 'scheduled' || taskState === 'retry'}
 								<td class="text-sm text-surface-500">
 									{formatRelativeTime(task.next_process_at)}
 								</td>
 							{/if}
-							{#if state === 'completed'}
+							{#if taskState === 'completed'}
 								<td class="text-sm text-surface-500">
 									{formatRelativeTime(task.completed_at)}
 								</td>
 							{/if}
-							{#if state === 'archived'}
+							{#if taskState === 'archived'}
 								<td class="text-sm text-error-500 max-w-[200px] truncate" title={task.last_err}>
 									{task.last_err || '-'}
 								</td>

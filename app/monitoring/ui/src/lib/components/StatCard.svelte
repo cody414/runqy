@@ -17,37 +17,45 @@
 	const fullHref = href ? base + href : undefined;
 
 	const variantClasses: Record<Variant, string> = {
-		default: 'text-surface-900 dark:text-surface-100',
+		default: 'text-surface-100',
 		success: 'text-success-500',
 		warning: 'text-warning-500',
 		error: 'text-error-500',
 		primary: 'text-primary-500'
 	};
+
+	const tintClasses: Record<Variant, string> = {
+		default: '',
+		success: 'rq-tint-success',
+		warning: 'rq-tint-warning',
+		error: 'rq-tint-error',
+		primary: 'rq-tint-primary'
+	};
 </script>
 
 {#if fullHref}
-<a href={fullHref} class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 block hover:ring-2 hover:ring-primary-500/50 transition-all cursor-pointer">
+<a href={fullHref} class="rq-card rq-card-interactive p-5 block {tintClasses[variant]}">
 	<div class="flex items-start justify-between">
 		<div>
-			<p class="text-sm text-surface-500">{label}</p>
-			<p class="text-3xl font-bold {variantClasses[variant]}">{formatNumber(value)}</p>
+			<p class="text-xs font-medium uppercase tracking-wider text-surface-400">{label}</p>
+			<p class="text-2xl font-semibold tracking-tight mt-1 {variantClasses[variant]}">{formatNumber(value)}</p>
 		</div>
 		{#if icon}
-			<div class="p-2 rounded-lg bg-surface-100 dark:bg-surface-700">
+			<div class="p-2 rounded-lg" style="background: rgba(255,255,255,0.04);">
 				{@html icon}
 			</div>
 		{/if}
 	</div>
 </a>
 {:else}
-<div class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4">
+<div class="rq-card p-5 {tintClasses[variant]}">
 	<div class="flex items-start justify-between">
 		<div>
-			<p class="text-sm text-surface-500">{label}</p>
-			<p class="text-3xl font-bold {variantClasses[variant]}">{formatNumber(value)}</p>
+			<p class="text-xs font-medium uppercase tracking-wider text-surface-400">{label}</p>
+			<p class="text-2xl font-semibold tracking-tight mt-1 {variantClasses[variant]}">{formatNumber(value)}</p>
 		</div>
 		{#if icon}
-			<div class="p-2 rounded-lg bg-surface-100 dark:bg-surface-700">
+			<div class="p-2 rounded-lg" style="background: rgba(255,255,255,0.04);">
 				{@html icon}
 			</div>
 		{/if}

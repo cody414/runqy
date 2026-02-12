@@ -11,7 +11,7 @@
 </script>
 
 <div
-	class="card preset-outlined-surface-200-800 bg-surface-50-950 p-4 cursor-pointer hover:shadow-lg transition-shadow"
+	class="rq-card rq-card-interactive p-5"
 	onclick={onClick}
 	onkeydown={(e) => e.key === 'Enter' && onClick?.()}
 	role="button"
@@ -56,7 +56,7 @@
 </div>
 
 <style>
-	.card:hover button {
+	.rq-card:hover button {
 		opacity: 1;
 	}
 </style>

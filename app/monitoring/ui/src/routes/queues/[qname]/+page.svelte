@@ -427,7 +427,7 @@
 	<!-- Task Table -->
 	<TaskTable
 		{tasks}
-		state={activeTab}
+		taskState={activeTab}
 		{loading}
 		{selectedIds}
 		onselect={handleSelect}
