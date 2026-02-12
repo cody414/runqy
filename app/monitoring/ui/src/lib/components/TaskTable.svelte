@@ -202,7 +202,7 @@
 							{/if}
 							{#if taskState === 'completed'}
 								<td class="text-sm text-surface-500">
-									{formatRelativeTime(task.completed_at)}
+									{task.completed_at ? formatRelativeTime(task.completed_at) : '-'}
 								</td>
 							{/if}
 							{#if taskState === 'archived'}
