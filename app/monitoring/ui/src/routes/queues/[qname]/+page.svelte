@@ -77,7 +77,6 @@
 		try {
 			const response = await getTasks(qname, activeTab, 1, 100);
 			tasks = response.tasks || [];
-			taskCounts[activeTab] = response.stats?.total || tasks.length;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load tasks';
 			tasks = [];
@@ -86,31 +85,37 @@
 		}
 	}
 
-	async function loadAllCounts() {
-		// Load counts for all tabs in parallel
-		const results = await Promise.allSettled(
-			tabs.map(async (tab) => {
-				const response = await getTasks(qname, tab.state, 1, 1);
-				return { state: tab.state, count: response.stats?.total || 0 };
-			})
-		);
-
-		results.forEach((result) => {
-			if (result.status === 'fulfilled') {
-				taskCounts[result.value.state] = result.value.count;
-			}
-		});
-		taskCounts = taskCounts; // Trigger reactivity
+	function updateCountsFromQueueInfo() {
+		if (!queueInfo) return;
+		taskCounts = {
+			active: queueInfo.active ?? 0,
+			pending: queueInfo.pending ?? 0,
+			retry: queueInfo.retry ?? 0,
+			archived: queueInfo.archived ?? 0,
+			completed: queueInfo.completed ?? 0
+		};
 	}
 
 	async function loadData() {
-		await Promise.all([loadQueueInfo(), loadTasks()]);
+		await loadQueueInfo();
+		updateCountsFromQueueInfo();
+	}
+
+	async function pollData() {
+		await loadData();
+		// Silently refresh tasks without showing loading skeleton
+		try {
+			const response = await getTasks(qname, activeTab, 1, 100);
+			tasks = response.tasks || [];
+		} catch {
+			// Silently ignore poll errors to avoid flashing error messages
+		}
 	}
 
 	onMount(() => {
 		loadData();
-		loadAllCounts();
-		pollInterval = setInterval(loadData, $settings.pollInterval * 1000);
+		loadTasks();
+		pollInterval = setInterval(pollData, $settings.pollInterval * 1000);
 	});
 
 	onDestroy(() => {
@@ -180,7 +185,7 @@
 					break;
 			}
 			await loadTasks();
-			await loadAllCounts();
+			await loadData();
 		} catch (e) {
 			console.error(`Failed to ${action} task:`, e);
 		}
@@ -198,7 +203,7 @@
 					await batchDeleteTasks(qname, Array.from(selectedIds), activeTab);
 					selectedIds = new Set();
 					await loadTasks();
-					await loadAllCounts();
+					await loadData();
 				} catch (e) {
 					console.error('Failed to delete tasks:', e);
 				}
@@ -212,7 +217,7 @@
 			await batchArchiveTasks(qname, Array.from(selectedIds), activeTab);
 			selectedIds = new Set();
 			await loadTasks();
-			await loadAllCounts();
+			await loadData();
 		} catch (e) {
 			console.error('Failed to archive tasks:', e);
 		}
@@ -224,7 +229,7 @@
 			await batchRunTasks(qname, Array.from(selectedIds));
 			selectedIds = new Set();
 			await loadTasks();
-			await loadAllCounts();
+			await loadData();
 		} catch (e) {
 			console.error('Failed to run tasks:', e);
 		}
@@ -240,7 +245,7 @@
 				try {
 					await deleteAllTasks(qname, activeTab);
 					await loadTasks();
-					await loadAllCounts();
+					await loadData();
 				} catch (e) {
 					console.error('Failed to delete all tasks:', e);
 				}
@@ -252,7 +257,7 @@
 		try {
 			await archiveAllTasks(qname, activeTab);
 			await loadTasks();
-			await loadAllCounts();
+			await loadData();
 		} catch (e) {
 			console.error('Failed to archive all tasks:', e);
 		}
@@ -266,7 +271,7 @@
 				await runAllArchivedTasks(qname);
 			}
 			await loadTasks();
-			await loadAllCounts();
+			await loadData();
 		} catch (e) {
 			console.error('Failed to run all tasks:', e);
 		}

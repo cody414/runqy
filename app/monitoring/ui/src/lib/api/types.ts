@@ -23,6 +23,12 @@ export interface QueueInfo {
 	latency_msec: number;
 	display_latency: string;
 	memory_usage_bytes: number;
+	active: number;
+	pending: number;
+	scheduled: number;
+	retry: number;
+	archived: number;
+	completed: number;
 }
 
 // Task types
