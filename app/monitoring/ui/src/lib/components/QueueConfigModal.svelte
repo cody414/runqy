@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Switch, SegmentedControl } from '@skeletonlabs/skeleton-svelte';
+	import { SegmentedControl } from '@skeletonlabs/skeleton-svelte';
 	import type { QueueConfigDetail, DeploymentConfig, VaultSummary } from '$lib/api/types';
 	import { getVaults, getVault } from '$lib/api/client';
 
@@ -310,10 +310,10 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
-		class="fixed inset-0 z-50 bg-surface-950/50 flex justify-center items-center p-4 overflow-y-auto"
+		class="fixed inset-0 z-50 bg-surface-950/70 backdrop-blur-sm flex justify-center items-center p-4 overflow-y-auto"
 		onclick={handleBackdropClick}
 	>
-		<div class="card preset-outlined-surface-200-800 bg-surface-100-900 w-full max-w-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+		<div class="card preset-outlined-surface-200-800 bg-surface-100-900 ring-1 ring-surface-300 dark:ring-surface-600 w-full max-w-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto">
 			<h2 class="h4 mb-4">
 				{mode === 'create' ? 'Create Queue' : 'Edit Queue Configuration'}
 			</h2>
@@ -437,10 +437,10 @@
 									</label>
 								</div>
 
-								<div class="flex items-center gap-3">
-									<Switch bind:checked={redisStorage} disabled={loading} />
+								<label class="flex items-center gap-3 cursor-pointer">
+									<input type="checkbox" bind:checked={redisStorage} class="checkbox" disabled={loading} />
 									<span class="text-sm">Redis Storage</span>
-								</div>
+								</label>
 
 								<div>
 									<span class="label-text">Vaults</span>

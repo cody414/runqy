@@ -57,10 +57,10 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
-		class="fixed inset-0 z-50 bg-surface-950/50 flex justify-center items-center p-4"
+		class="fixed inset-0 z-50 bg-surface-950/70 backdrop-blur-sm flex justify-center items-center p-4"
 		onclick={handleBackdropClick}
 	>
-		<div class="card preset-outlined-surface-200-800 bg-surface-100-900 w-full max-w-md p-6 shadow-xl">
+		<div class="card preset-outlined-surface-200-800 bg-surface-100-900 ring-1 ring-surface-300 dark:ring-surface-600 w-full max-w-md p-6 shadow-xl">
 			<h2 class="h4 mb-4">Create Vault</h2>
 
 			<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
