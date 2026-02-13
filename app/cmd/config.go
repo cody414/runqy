@@ -607,6 +607,7 @@ func runConfigCreateRemote() error {
 					StartupCmd:         config.Deployment.StartupCmd,
 					Mode:               config.Deployment.Mode,
 					StartupTimeoutSecs: config.Deployment.StartupTimeoutSecs,
+					RedisStorage:       config.Deployment.RedisStorage,
 					Vaults:             config.Deployment.Vaults,
 					GitToken:           config.Deployment.GitToken,
 				}
@@ -749,6 +750,7 @@ func loadConfigsFromFile(filePath string) ([]*queueworker.QueueConfig, error) {
 			StartupCmd:         simple.Deployment.StartupCmd,
 			Mode:               simple.Deployment.Mode,
 			StartupTimeoutSecs: simple.Deployment.StartupTimeoutSecs,
+			RedisStorage:       simple.Deployment.RedisStorage,
 			Vaults:             simple.Deployment.Vaults,
 			GitToken:           simple.Deployment.GitToken,
 		}

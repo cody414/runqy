@@ -313,6 +313,7 @@ type DeploymentConfigAPI struct {
 	StartupCmd         string   `json:"startup_cmd"`
 	Mode               string   `json:"mode,omitempty"`
 	StartupTimeoutSecs int      `json:"startup_timeout_secs,omitempty"`
+	RedisStorage       *bool    `json:"redis_storage,omitempty"`
 	Vaults             []string `json:"vaults,omitempty"`
 	GitToken           string   `json:"git_token,omitempty"`
 }
