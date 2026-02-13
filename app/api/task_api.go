@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"net/http"
 	"strings"
@@ -34,14 +33,12 @@ import (
 func GetTaskStatus(c *gin.Context) {
 	uuid := c.Param("uuid")
 
-	redisAddr, err := models.BuildRedisConns()
-	if err != nil {
-		log.Fatalf("[FATAL] Redis build connection failed: %v", err)
-	}
+	rdb := c.Keys["rdb"].(*redis.Client)
+	redisOpt := c.Keys["redisOpt"].(asynq.RedisClientOpt)
 
 	// Look up queue from task hash: asynq:t:{task_id}
 	taskKey := fmt.Sprintf("asynq:t:%s", uuid)
-	queue, err := redisAddr.RDB.HGet(c, taskKey, "queue").Result()
+	queue, err := rdb.HGet(c, taskKey, "queue").Result()
 	if err == redis.Nil {
 		c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"task not found"}})
 		return
@@ -51,7 +48,7 @@ func GetTaskStatus(c *gin.Context) {
 		return
 	}
 
-	inspector := asynq.NewInspector(redisAddr.AsynqOpt)
+	inspector := asynq.NewInspector(redisOpt)
 	defer inspector.Close()
 
 	resp, err := waitForResult(context.Background(), inspector, queue, uuid)

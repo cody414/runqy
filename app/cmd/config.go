@@ -184,7 +184,7 @@ func runConfigList(cmd *cobra.Command, args []string) error {
 	}
 	defer pgDB.Close()
 
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
@@ -296,7 +296,7 @@ func runConfigReload(cmd *cobra.Command, args []string) error {
 	}
 	defer pgDB.Close()
 
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
@@ -461,7 +461,7 @@ func runConfigCreateLocal() error {
 	}
 	defer pgDB.Close()
 
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
@@ -787,7 +787,7 @@ func runConfigRemoveLocal(queueName string) error {
 	}
 	defer pgDB.Close()
 
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}

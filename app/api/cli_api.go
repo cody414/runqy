@@ -51,9 +51,9 @@ type TaskListResponse struct {
 }
 
 // SetupCLIAPI sets up the CLI-specific API endpoints
-func SetupCLIAPI(r *gin.Engine, inspector *asynq.Inspector, store *queueworker.Store) {
+func SetupCLIAPI(r *gin.Engine, inspector *asynq.Inspector, store *queueworker.Store, apiKey string) {
 	api := r.Group("/api")
-	api.Use(Authorize())
+	api.Use(Authorize(apiKey))
 
 	// Queue endpoints
 	api.GET("/queues", listQueuesHandler(inspector, store))

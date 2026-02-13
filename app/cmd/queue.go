@@ -71,7 +71,7 @@ func init() {
 }
 
 func getInspector() (*asynq.Inspector, error) {
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(GetConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
@@ -93,7 +93,7 @@ func runQueueList(cmd *cobra.Command, args []string) error {
 	}
 	defer pgDB.Close()
 
-	redisConns, err := models.BuildRedisConns()
+	redisConns, err := models.BuildRedisConns(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}

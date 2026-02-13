@@ -3,9 +3,9 @@ package monitoring
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"path/filepath"
 
+	"github.com/Publikey/runqy/config"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -25,7 +25,7 @@ type DatabaseStats struct {
 	Idle            int `json:"idle"`
 }
 
-func newDatabaseInfoHandlerFunc(db *sqlx.DB) http.HandlerFunc {
+func newDatabaseInfoHandlerFunc(db *sqlx.DB, cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -43,25 +43,23 @@ func newDatabaseInfoHandlerFunc(db *sqlx.DB) http.HandlerFunc {
 		switch driverName {
 		case "sqlite3", "sqlite":
 			info.Type = "SQLite"
-			// For SQLite, get the database file path from environment or default
-			dbPath := os.Getenv("SQLITE_DB_PATH")
-			if dbPath == "" {
-				dbPath = "runqy.db"
+			dbPath := "runqy.db"
+			if cfg != nil && cfg.SQLiteDBPath != "" {
+				dbPath = cfg.SQLiteDBPath
 			}
 			info.Database = filepath.Base(dbPath)
 		case "postgres", "pgx":
 			info.Type = "PostgreSQL"
-			info.Host = os.Getenv("DATABASE_HOST")
-			if info.Host == "" {
-				info.Host = "localhost"
+			info.Host = "localhost"
+			if cfg != nil && cfg.PostgresHost != "" {
+				info.Host = cfg.PostgresHost
 			}
-			port := os.Getenv("DATABASE_PORT")
-			if port != "" && port != "5432" {
-				info.Host = info.Host + ":" + port
+			if cfg != nil && cfg.PostgresPort != "" && cfg.PostgresPort != "5432" {
+				info.Host = info.Host + ":" + cfg.PostgresPort
 			}
-			info.Database = os.Getenv("DATABASE_DBNAME")
-			if info.Database == "" {
-				info.Database = "runqy"
+			info.Database = "runqy"
+			if cfg != nil && cfg.PostgresDB != "" {
+				info.Database = cfg.PostgresDB
 			}
 		default:
 			info.Type = driverName

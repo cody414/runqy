@@ -131,7 +131,7 @@ func runTaskEnqueue(cmd *cobra.Command, args []string) error {
 	}
 
 	// Local mode: direct Redis access
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
