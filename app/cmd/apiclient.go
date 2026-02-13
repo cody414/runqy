@@ -301,7 +301,6 @@ func (c *APIClient) GetWorker(workerID string) (*WorkerInfoAPI, error) {
 type QueueConfigAPI struct {
 	Name       string                `json:"name"`
 	Priority   int                   `json:"priority"`
-	Provider   string                `json:"provider,omitempty"`
 	Deployment *DeploymentConfigAPI  `json:"deployment,omitempty"`
 }
 
@@ -328,7 +327,6 @@ type ConfigListResponse struct {
 type QueueSummaryAPI struct {
 	Name     string `json:"name"`
 	Priority int    `json:"priority"`
-	Provider string `json:"provider,omitempty"`
 }
 
 // ListConfigs fetches all queue configurations
@@ -372,7 +370,6 @@ func (c *APIClient) ReloadConfigs() (*ReloadResponse, error) {
 type CreateQueueRequest struct {
 	Name       string               `json:"name"`
 	Priority   int                  `json:"priority"`
-	Provider   string               `json:"provider,omitempty"`
 	Deployment *DeploymentConfigAPI `json:"deployment,omitempty"`
 }
 

@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type Config struct {
@@ -21,22 +20,6 @@ type Config struct {
 	RedisPort     string
 	RedisPassword string
 	RedisTLS      bool
-
-	// Azure OpenAI
-	AzureAPIKey     string
-	AzureEndpoint   string
-	AzureAPIVersion string
-	AzureDeployment string
-
-	// Google Gemini
-	GoogleAPIKey string
-
-	// Virtual Worker settings (for API providers like azure, google)
-	VirtualWorkerConcurrency int
-
-	// Webhook settings
-	WebhookTimeout time.Duration
-	WebhookRetries int
 
 	// Queue Workers
 	QueueWorkersDir string
@@ -84,21 +67,6 @@ func Load() *Config {
 		RedisPort:     getEnv("REDIS_PORT", "6379"),
 		RedisPassword: os.Getenv("REDIS_PASSWORD"),
 		RedisTLS:      os.Getenv("REDIS_TLS") == "true",
-
-		// Azure OpenAI
-		AzureAPIKey:     os.Getenv("AZURE_OPENAI_API_KEY"),
-		AzureEndpoint:   os.Getenv("AZURE_OPENAI_ENDPOINT"),
-		AzureAPIVersion: getEnv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
-
-		// Google Gemini
-		GoogleAPIKey: os.Getenv("GOOGLE_API_KEY"),
-
-		// Virtual Workers (for API providers)
-		VirtualWorkerConcurrency: getEnvInt("VIRTUAL_WORKER_CONCURRENCY", 10),
-
-		// Webhook
-		WebhookTimeout: time.Duration(getEnvInt("WEBHOOK_TIMEOUT_SECONDS", 30)) * time.Second,
-		WebhookRetries: getEnvInt("WEBHOOK_RETRIES", 3),
 
 		// Queue Workers
 		QueueWorkersDir: getEnv("QUEUE_WORKERS_DIR", "../queueworkers"),

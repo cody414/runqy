@@ -193,7 +193,6 @@
 	interface QueueToCreate {
 		name: string;
 		priority: number;
-		provider: string;
 		deployment: DeploymentConfig | null;
 	}
 
@@ -208,7 +207,7 @@
 
 				for (const q of queues) {
 					try {
-						await createQueueConfig(q.name, q.priority, q.provider || undefined, q.deployment || undefined);
+						await createQueueConfig(q.name, q.priority, q.deployment || undefined);
 						succeeded++;
 					} catch (e) {
 						failed++;
@@ -226,7 +225,7 @@
 			} else {
 				// Edit mode - single queue
 				const q = queues[0];
-				await updateQueueConfig(q.name, q.priority, q.provider || undefined, q.deployment || undefined);
+				await updateQueueConfig(q.name, q.priority, q.deployment || undefined);
 				toaster.success({ title: 'Queue Updated', description: `Queue "${q.name}" updated` });
 			}
 			await loadData();

@@ -11,7 +11,6 @@
 	interface QueueToCreate {
 		name: string;
 		priority: number;
-		provider: string;
 		deployment: DeploymentConfig | null;
 	}
 
@@ -208,7 +207,6 @@
 			queuesToCreate.push({
 				name: `${queueName.trim()}.default`,
 				priority: 1,
-				provider: '',
 				deployment
 			});
 		} else {
@@ -216,7 +214,6 @@
 				queuesToCreate.push({
 					name: `${queueName.trim()}.${sq.name.trim()}`,
 					priority: sq.priority,
-					provider: '',
 					deployment
 				});
 			}

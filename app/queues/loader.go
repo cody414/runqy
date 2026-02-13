@@ -113,17 +113,15 @@ func (c *QueueWorkersYAML) Validate() error {
 			}
 		}
 
-		// External workers (no provider or provider="worker") require deployment
-		if q.Provider == "" || q.Provider == "worker" {
-			if q.Deployment == nil {
-				return fmt.Errorf("queue '%s': deployment is required for external workers", queueName)
-			}
-			if q.Deployment.GitURL == "" {
-				return fmt.Errorf("queue '%s': deployment.git_url is required", queueName)
-			}
-			if q.Deployment.StartupCmd == "" {
-				return fmt.Errorf("queue '%s': deployment.startup_cmd is required", queueName)
-			}
+		// Deployment is required for all queues
+		if q.Deployment == nil {
+			return fmt.Errorf("queue '%s': deployment is required", queueName)
+		}
+		if q.Deployment.GitURL == "" {
+			return fmt.Errorf("queue '%s': deployment.git_url is required", queueName)
+		}
+		if q.Deployment.StartupCmd == "" {
+			return fmt.Errorf("queue '%s': deployment.startup_cmd is required", queueName)
 		}
 	}
 	return nil
@@ -152,7 +150,6 @@ func (q *QueueYAML) ToQueueAndSubQueues(baseName string) (*Queue, []SubQueue) {
 	// Create the parent queue
 	queue := &Queue{
 		Name:         baseName,
-		Provider:     q.Provider,
 		Deployment:   deployment,
 		InputSchema:  q.Input,
 		OutputSchema: q.Output,
@@ -208,7 +205,7 @@ func (q *QueueYAML) ToQueueConfigs(baseName string) []*QueueConfig {
 			cfg := &QueueConfig{
 				Name:       BuildFullQueueName(baseName, sq.Name),
 				Priority:   sq.Priority,
-				Provider:   q.Provider,
+	
 				Deployment: deployment,
 			}
 			configs = append(configs, cfg)
@@ -218,7 +215,7 @@ func (q *QueueYAML) ToQueueConfigs(baseName string) []*QueueConfig {
 		cfg := &QueueConfig{
 			Name:       BuildFullQueueName(baseName, DefaultSubQueueName),
 			Priority:   q.Priority,
-			Provider:   q.Provider,
+
 			Deployment: deployment,
 		}
 		configs = append(configs, cfg)

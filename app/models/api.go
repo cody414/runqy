@@ -16,79 +16,61 @@ type GenericTask struct {
 	Timeout int64           `json:"timeout"`
 	Data    json.RawMessage `json:"data" swaggertype:"object"`
 }
-type Predict struct {
-	UserId     int64   `json:"user_id" `
-	PredictId  int64   `json:"predict_id"`
-	Status     string  `json:"status"`
-	Queue      string  `json:"queue"`
-	Timeout    int64   `json:"timeout"`
-	Provider   string  `json:"provider,omitempty"` // "azure", "openai", "google", "worker" or empty (default: worker)
-	ModelInput Request `json:"model_input"`
-	EnqueuedAt int64   `json:"enqueued_at"`
-	WebhookUrl string  `json:"webhook_url"`
-}
-
 // Request contains the model input parameters for image/video generation.
-// Fields are provider-agnostic: send any fields you have, unused ones are ignored.
-// Providers: "worker" (SDXL/external workers), "azure" (Azure OpenAI DALL-E)
+// Fields are generic: send any fields you have, unused ones are ignored.
 type Request struct {
-	// ID is the request identifier (all providers)
+	// ID is the request identifier
 	ID string `json:"id"`
-	// URL is an alternative webhook URL field (all providers)
+	// URL is an alternative webhook URL field
 	URL string `json:"webhook_url"`
-	// Prompt is the text prompt for generation - REQUIRED (all providers)
+	// Prompt is the text prompt for generation - REQUIRED
 	Prompt string `json:"prompt"`
-	// NegativePrompt specifies what to avoid in generation (worker/SDXL only)
+	// NegativePrompt specifies what to avoid in generation
 	NegativePrompt string `json:"negative_prompt,omitempty"`
-	// Width of the output image in pixels (all providers)
+	// Width of the output image in pixels
 	Width int `json:"width,omitempty"`
-	// Height of the output image in pixels (all providers)
+	// Height of the output image in pixels
 	Height int `json:"height,omitempty"`
-	// NumSteps is the number of diffusion steps (worker/SDXL only)
+	// NumSteps is the number of diffusion steps
 	NumSteps int `json:"num_steps,omitempty"`
-	// ClipSkip is the number of CLIP layers to skip (worker/SDXL only)
+	// ClipSkip is the number of CLIP layers to skip
 	ClipSkip int `json:"clip_skip,omitempty"`
-	// GuidanceScale controls how closely to follow the prompt (worker/SDXL only)
+	// GuidanceScale controls how closely to follow the prompt
 	GuidanceScale float64 `json:"guidance_scale,omitempty"`
-	// Seed for reproducible generation (worker/SDXL only)
+	// Seed for reproducible generation
 	Seed int `json:"seed,omitempty"`
-	// Quality level: "hd", "standard" (Azure: dall-e-3, gpt-image-1 only - not flux)
+	// Quality level: "hd", "standard"
 	Quality string `json:"quality,omitempty"`
-	// BatchNbr is the number of images to generate (all providers)
+	// BatchNbr is the number of images to generate
 	BatchNbr int `json:"batch_nbr,omitempty"`
-	// NumFrames is the number of frames for video generation (worker/SDXL only)
+	// NumFrames is the number of frames for video generation
 	NumFrames int `json:"num_frames,omitempty"`
-	// FPS is the frames per second for video output (worker/SDXL only)
+	// FPS is the frames per second for video output
 	FPS int `json:"fps,omitempty"`
-	// DecodeTimesteps for video decode process (worker/SDXL only)
+	// DecodeTimesteps for video decode process
 	DecodeTimesteps float64 `json:"decode_timesteps,omitempty"`
-	// DecodeNoiseScale for video decode process (worker/SDXL only)
+	// DecodeNoiseScale for video decode process
 	DecodeNoiseScale float64 `json:"decode_noise_scale,omitempty"`
-	// ImgURL is the input image URL for img2img generation (worker/SDXL only)
+	// ImgURL is the input image URL for img2img generation
 	ImgURL string `json:"img_url,omitempty"`
-	// Scheduler is the sampling scheduler to use (worker/SDXL only)
+	// Scheduler is the sampling scheduler to use
 	Scheduler string `json:"scheduler,omitempty"`
-	// ModelName is the model to use. Worker: SDXL model name. Azure: "gpt-image-1", "gpt-image-1.5", "flux.2-pro", "flux-1.1-pro" (required)
+	// ModelName is the model to use
 	ModelName string `json:"model_name,omitempty"`
-	// OutputCompression controls image compression 0-100 (Azure: gpt-image-1, gpt-image-1.5 only)
+	// OutputCompression controls image compression 0-100
 	OutputCompression int `json:"output_compression,omitempty"`
-	// OutputFormat specifies output format: "png", "jpeg" (Azure: gpt-image-1, gpt-image-1.5, flux-1.1-pro)
+	// OutputFormat specifies output format: "png", "jpeg"
 	OutputFormat string `json:"output_format,omitempty"`
-	// AspectRatio for image generation (Google: "1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9")
+	// AspectRatio for image generation
 	AspectRatio string `json:"aspect_ratio,omitempty"`
-	// ImageSize for output resolution (Google Pro model only: "1K", "2K", "4K")
+	// ImageSize for output resolution
 	ImageSize string `json:"image_size,omitempty"`
-	// Resolution for video generation (Google Veo: "720p", "1080p")
+	// Resolution for video generation
 	Resolution string `json:"resolution,omitempty"`
-	// DurationSeconds for video length (Google Veo: 4, 6, 8)
+	// DurationSeconds for video length
 	DurationSeconds int `json:"duration_seconds,omitempty"`
-	// PersonGeneration controls people generation (Google Veo: "allow_all", "allow_adult")
+	// PersonGeneration controls people generation
 	PersonGeneration string `json:"person_generation,omitempty"`
-}
-
-type ResponsePost struct {
-	Info        AddTaskInfoDoc
-	UserPredict Predict
 }
 
 type GenericResponsePost struct {

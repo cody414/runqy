@@ -21,7 +21,6 @@ type QueueConfigListResponse struct {
 type CreateQueueConfigRequest struct {
 	Name       string                       `json:"name"`
 	Priority   int                          `json:"priority"`
-	Provider   string                       `json:"provider,omitempty"`
 	Deployment *queueworker.DeploymentConfig `json:"deployment,omitempty"`
 }
 
@@ -29,7 +28,6 @@ type CreateQueueConfigRequest struct {
 type QueueConfigDetailResponse struct {
 	Name       string                       `json:"name"`
 	Priority   int                          `json:"priority"`
-	Provider   string                       `json:"provider,omitempty"`
 	Deployment *queueworker.DeploymentConfig `json:"deployment,omitempty"`
 	CreatedAt  int64                        `json:"created_at"`
 	UpdatedAt  int64                        `json:"updated_at"`
@@ -53,7 +51,6 @@ func newListQueueConfigsHandlerFunc(store *queueworker.Store) http.HandlerFunc {
 			details = append(details, QueueConfigDetailResponse{
 				Name:       cfg.Name,
 				Priority:   cfg.Priority,
-				Provider:   cfg.Provider,
 				Deployment: cfg.Deployment,
 				CreatedAt:  cfg.CreatedAt,
 				UpdatedAt:  cfg.UpdatedAt,
@@ -86,7 +83,6 @@ func newGetQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc {
 		resp := QueueConfigDetailResponse{
 			Name:       cfg.Name,
 			Priority:   cfg.Priority,
-			Provider:   cfg.Provider,
 			Deployment: cfg.Deployment,
 			CreatedAt:  cfg.CreatedAt,
 			UpdatedAt:  cfg.UpdatedAt,
@@ -151,7 +147,6 @@ func newCreateQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 		cfg := &queueworker.QueueConfig{
 			Name:       req.Name,
 			Priority:   req.Priority,
-			Provider:   req.Provider,
 			Deployment: req.Deployment,
 			CreatedAt:  now,
 			UpdatedAt:  now,
@@ -225,7 +220,6 @@ func newUpdateQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 		cfg := &queueworker.QueueConfig{
 			Name:       name,
 			Priority:   req.Priority,
-			Provider:   req.Provider,
 			Deployment: req.Deployment,
 			CreatedAt:  existing.CreatedAt,
 			UpdatedAt:  time.Now().Unix(),

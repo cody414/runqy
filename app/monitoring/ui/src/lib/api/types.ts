@@ -235,7 +235,6 @@ export interface VaultDetail {
 export interface QueueConfigSummary {
 	name: string;
 	priority: number;
-	provider?: string;
 }
 
 export interface DeploymentConfig {
@@ -253,7 +252,6 @@ export interface DeploymentConfig {
 export interface QueueConfigDetail {
 	name: string;
 	priority: number;
-	provider?: string;
 	deployment?: DeploymentConfig;
 	created_at: number;
 	updated_at: number;
