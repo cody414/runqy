@@ -17,14 +17,16 @@ func GetVaultStore() *vaults.Store {
 }
 
 func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg *config.Config, redisOpt asynq.RedisClientOpt) {
+	apiKey := cfg.APIKey
+
 	// Setup CLI API endpoints (queue/task management)
 	inspector := asynq.NewInspector(redisOpt)
-	SetupCLIAPI(r, inspector, qwStore)
+	SetupCLIAPI(r, inspector, qwStore, apiKey)
 	// api GET queue
 	router_predict := r.Group("queue")
 	router_predict.GET("/:uuid", GetTaskStatus)
 	// api POST queue
-	router_predict.Use(Authorize())
+	router_predict.Use(Authorize(apiKey))
 	router_predict.POST("/add", AddTask(qwConfigDir, qwStore))
 	router_predict.POST("/add-batch", AddTaskBatch(qwConfigDir, qwStore))
 
@@ -36,11 +38,11 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 
 	// Worker registration endpoint - workers are trusted, no API key validation
 	router_worker := r.Group("worker")
-	router_worker.Use(Authorize())
+	router_worker.Use(Authorize(apiKey))
 	router_worker.POST("/register", WorkerHandshake(qwStore, cfg))
 
 	// All other endpoints require API key
-	router_workers.Use(Authorize())
+	router_workers.Use(Authorize(apiKey))
 	router_workers.GET("", ListWorkers)
 	router_workers.GET("/:worker_id", GetWorker)
 	router_workers.GET("/queues", ListQueueConfigs(qwStore))
@@ -51,12 +53,12 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 }
 
 // SetupVaultsAPI sets up the vaults API routes
-func SetupVaultsAPI(r *gin.Engine, vaultStore *vaults.Store) {
+func SetupVaultsAPI(r *gin.Engine, vaultStore *vaults.Store, apiKey string) {
 	globalVaultStore = vaultStore
 
 	// Vaults API - all routes require API key authentication
 	router_vaults := r.Group("/api/vaults")
-	router_vaults.Use(Authorize())
+	router_vaults.Use(Authorize(apiKey))
 
 	// Vault CRUD
 	router_vaults.GET("", ListVaults(vaultStore))

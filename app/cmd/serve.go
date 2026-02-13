@@ -42,6 +42,17 @@ var (
 	useSQLite     bool
 	disableUI     bool
 	debugMode     bool
+
+	// Infrastructure flags
+	port       string
+	dbHost     string
+	dbPort     string
+	dbUser     string
+	dbPassword string
+	dbName     string
+	dbSSL      string
+	redisTLS   bool
+	sqlitePath string
 )
 
 // DebugMode is a package-level variable that can be checked by other packages
@@ -76,6 +87,17 @@ func init() {
 	serveCmd.Flags().BoolVar(&useSQLite, "sqlite", false, "Use SQLite instead of PostgreSQL (for testing, NOT recommended for production)")
 	serveCmd.Flags().BoolVar(&disableUI, "no-ui", false, "Disable the monitoring web dashboard")
 	serveCmd.Flags().BoolVar(&debugMode, "debug", false, "Enable verbose logging (GIN routes, detailed startup logs)")
+
+	// Infrastructure flags
+	serveCmd.Flags().StringVar(&port, "port", "", "HTTP port (overrides PORT env var)")
+	serveCmd.Flags().StringVar(&dbHost, "db-host", "", "PostgreSQL host")
+	serveCmd.Flags().StringVar(&dbPort, "db-port", "", "PostgreSQL port")
+	serveCmd.Flags().StringVar(&dbUser, "db-user", "", "PostgreSQL user")
+	serveCmd.Flags().StringVar(&dbPassword, "db-password", "", "PostgreSQL password")
+	serveCmd.Flags().StringVar(&dbName, "db-name", "", "PostgreSQL database name")
+	serveCmd.Flags().StringVar(&dbSSL, "db-ssl", "", "PostgreSQL SSL mode")
+	serveCmd.Flags().BoolVar(&redisTLS, "redis-tls", false, "Enable TLS for Redis")
+	serveCmd.Flags().StringVar(&sqlitePath, "sqlite-path", "", "SQLite database file path")
 }
 
 func runServe(cmd *cobra.Command, args []string) {
@@ -109,6 +131,35 @@ func runServe(cmd *cobra.Command, args []string) {
 		cfg.UseSQLite = true
 	}
 
+	// Infrastructure flag overrides
+	if port != "" {
+		cfg.HTTPPort = port
+	}
+	if dbHost != "" {
+		cfg.PostgresHost = dbHost
+	}
+	if dbPort != "" {
+		cfg.PostgresPort = dbPort
+	}
+	if dbUser != "" {
+		cfg.PostgresUser = dbUser
+	}
+	if dbPassword != "" {
+		cfg.PostgresPassword = dbPassword
+	}
+	if dbName != "" {
+		cfg.PostgresDB = dbName
+	}
+	if dbSSL != "" {
+		cfg.PostgresSSL = dbSSL
+	}
+	if cmd.Flags().Changed("redis-tls") {
+		cfg.RedisTLS = redisTLS
+	}
+	if sqlitePath != "" {
+		cfg.SQLiteDBPath = sqlitePath
+	}
+
 	// Initialize startup config for banner
 	startupCfg := StartupConfig{
 		Version:      Version,
@@ -130,7 +181,7 @@ func runServe(cmd *cobra.Command, args []string) {
 	}
 	router.Use(cors.Default())
 
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(cfg)
 	if err != nil {
 		log.Fatalf("Redis connection failed: %v", err)
 	}
@@ -173,8 +224,13 @@ func runServe(cmd *cobra.Command, args []string) {
 	router.Use(func(c *gin.Context) {
 		c.Set("client", redisClient)
 		c.Set("rdb", redisAddr.RDB)
+		c.Set("redisOpt", redisAddr.AsynqOpt)
 		c.Next()
 	})
+
+	// Initialize encryption and JWT from centralized config
+	vaults.InitEncryptor(cfg.VaultMasterKey)
+	auth.InitJWTManager(cfg.JWTSecret)
 
 	// Initialize vault store
 	vaultStore := vaults.NewStore(db)
@@ -210,12 +266,13 @@ func runServe(cmd *cobra.Command, args []string) {
 		h = monitoring.New(monitoring.Options{
 			RootPath:          "/monitoring",
 			RedisConnOpt:      redisAddr.AsynqOpt,
-			ReadOnly:          os.Getenv("ASYNQ_READ_ONLY") == "true",
+			ReadOnly:          cfg.ReadOnly,
 			DB:                db,
 			VaultStore:        vaultStore,
 			QueueStore:        qwStore,
 			AuthStore:         authStore,
-			PrometheusAddress: os.Getenv("PROMETHEUS_ADDRESS"),
+			PrometheusAddress: cfg.PrometheusAddress,
+			Config:            cfg,
 		})
 		defer h.Close()
 	} else if debugMode {
@@ -324,7 +381,7 @@ func runServe(cmd *cobra.Command, args []string) {
 	})
 
 	api.SetupAPI(router, qwStore, cfg.QueueWorkersDir, cfg, redisAddr.AsynqOpt)
-	api.SetupVaultsAPI(router, vaultStore)
+	api.SetupVaultsAPI(router, vaultStore, cfg.APIKey)
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.StaticFile("/swagger.yaml", "./docs/swagger.yaml")

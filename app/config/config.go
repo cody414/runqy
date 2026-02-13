@@ -1,9 +1,11 @@
 package config
 
 import (
+	"fmt"
+	"net/url"
 	"os"
 	"strconv"
-	"time"
+	"strings"
 )
 
 type Config struct {
@@ -19,22 +21,6 @@ type Config struct {
 	RedisPassword string
 	RedisTLS      bool
 
-	// Azure OpenAI
-	AzureAPIKey     string
-	AzureEndpoint   string
-	AzureAPIVersion string
-	AzureDeployment string
-
-	// Google Gemini
-	GoogleAPIKey string
-
-	// Virtual Worker settings (for API providers like azure, google)
-	VirtualWorkerConcurrency int
-
-	// Webhook settings
-	WebhookTimeout time.Duration
-	WebhookRetries int
-
 	// Queue Workers
 	QueueWorkersDir string
 
@@ -49,6 +35,14 @@ type Config struct {
 	// SQLite (alternative to PostgreSQL for local development)
 	UseSQLite    bool
 	SQLiteDBPath string
+
+	// Monitoring
+	ReadOnly          bool
+	PrometheusAddress string
+
+	// Security
+	JWTSecret      string
+	VaultMasterKey string
 
 	// GitHub Repository Config
 	ConfigRepoURL       string
@@ -70,24 +64,9 @@ func Load() *Config {
 
 		// Redis
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),
-		RedisPort:     getEnv("REDIS_PORT", "6060"),
+		RedisPort:     getEnv("REDIS_PORT", "6379"),
 		RedisPassword: os.Getenv("REDIS_PASSWORD"),
 		RedisTLS:      os.Getenv("REDIS_TLS") == "true",
-
-		// Azure OpenAI
-		AzureAPIKey:     os.Getenv("AZURE_OPENAI_API_KEY"),
-		AzureEndpoint:   os.Getenv("AZURE_OPENAI_ENDPOINT"),
-		AzureAPIVersion: getEnv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
-
-		// Google Gemini
-		GoogleAPIKey: os.Getenv("GOOGLE_API_KEY"),
-
-		// Virtual Workers (for API providers)
-		VirtualWorkerConcurrency: getEnvInt("VIRTUAL_WORKER_CONCURRENCY", 10),
-
-		// Webhook
-		WebhookTimeout: time.Duration(getEnvInt("WEBHOOK_TIMEOUT_SECONDS", 30)) * time.Second,
-		WebhookRetries: getEnvInt("WEBHOOK_RETRIES", 3),
 
 		// Queue Workers
 		QueueWorkersDir: getEnv("QUEUE_WORKERS_DIR", "../queueworkers"),
@@ -102,6 +81,14 @@ func Load() *Config {
 
 		// SQLite (UseSQLite is set by CLI flag, not env var)
 		SQLiteDBPath: getEnv("SQLITE_DB_PATH", "runqy.db"),
+
+		// Monitoring
+		ReadOnly:          os.Getenv("ASYNQ_READ_ONLY") == "true",
+		PrometheusAddress: os.Getenv("PROMETHEUS_ADDRESS"),
+
+		// Security
+		JWTSecret:      os.Getenv("RUNQY_JWT_SECRET"),
+		VaultMasterKey: os.Getenv("RUNQY_VAULT_MASTER_KEY"),
 
 		// GitHub Repository Config
 		ConfigRepoURL:       os.Getenv("CONFIG_REPO_URL"),
@@ -127,4 +114,43 @@ func getEnvInt(key string, defaultVal int) int {
 		}
 	}
 	return defaultVal
+}
+
+// ParseRedisURI parses a Redis URI (redis[s]://[:password@]host[:port]) and
+// sets RedisHost, RedisPort, RedisPassword, and RedisTLS on the Config.
+func (c *Config) ParseRedisURI(uri string) error {
+	// Normalize scheme for url.Parse
+	useTLS := false
+	if strings.HasPrefix(uri, "rediss://") {
+		useTLS = true
+		uri = "redis://" + strings.TrimPrefix(uri, "rediss://")
+	}
+
+	u, err := url.Parse(uri)
+	if err != nil {
+		return fmt.Errorf("invalid redis URI: %w", err)
+	}
+
+	if u.Scheme != "redis" {
+		return fmt.Errorf("invalid redis URI scheme: %s (expected redis:// or rediss://)", u.Scheme)
+	}
+
+	host := u.Hostname()
+	if host != "" {
+		c.RedisHost = host
+	}
+
+	port := u.Port()
+	if port != "" {
+		c.RedisPort = port
+	}
+
+	if u.User != nil {
+		if pw, ok := u.User.Password(); ok {
+			c.RedisPassword = pw
+		}
+	}
+
+	c.RedisTLS = useTLS
+	return nil
 }

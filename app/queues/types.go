@@ -68,8 +68,7 @@ type QueueWorkersYAML struct {
 // 2. Without sub_queues: uses priority field directly, creates "name.default"
 type QueueYAML struct {
 	Priority   int             `yaml:"priority,omitempty"`   // Used when no sub_queues defined
-	Provider   string          `yaml:"provider,omitempty"`   // "azure", "google", or empty for external workers
-	Deployment *DeploymentYAML `yaml:"deployment,omitempty"` // Required for external workers
+	Deployment *DeploymentYAML `yaml:"deployment,omitempty"` // Deployment configuration
 	SubQueues  []SubQueueYAML  `yaml:"sub_queues,omitempty"` // Optional list of sub-queues
 
 	// Input and Output describe the schema of the task payload for this queue
@@ -119,7 +118,6 @@ type DeploymentYAML struct {
 type Queue struct {
 	ID           int               `json:"id" db:"id"`
 	Name         string            `json:"name" db:"name"`
-	Provider     string            `json:"provider,omitempty" db:"provider"`
 	Deployment   *DeploymentConfig `json:"deployment,omitempty"`
 	InputSchema  []FieldSchema     `json:"input_schema,omitempty"`
 	OutputSchema []FieldSchema     `json:"output_schema,omitempty"`
@@ -151,7 +149,6 @@ type QueueWithSubQueues struct {
 type QueueConfig struct {
 	Name       string            `json:"name"`
 	Priority   int               `json:"priority"`
-	Provider   string            `json:"provider,omitempty"`
 	Deployment *DeploymentConfig `json:"deployment,omitempty"`
 	CreatedAt  int64             `json:"created_at"`
 	UpdatedAt  int64             `json:"updated_at"`
@@ -174,5 +171,4 @@ type DeploymentConfig struct {
 type QueueSummary struct {
 	Name     string `json:"name"`
 	Priority int    `json:"priority"`
-	Provider string `json:"provider,omitempty"`
 }

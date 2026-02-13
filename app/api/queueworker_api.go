@@ -115,7 +115,6 @@ type ReloadResponse struct {
 type CreateQueueRequest struct {
 	Name       string                      `json:"name" binding:"required"`
 	Priority   int                         `json:"priority" binding:"required,min=1"`
-	Provider   string                      `json:"provider,omitempty"`
 	Deployment *queueworker.DeploymentConfig `json:"deployment,omitempty"`
 }
 
@@ -337,7 +336,6 @@ func ListQueueConfigs(store *queueworker.Store) gin.HandlerFunc {
 			summaries = append(summaries, queueworker.QueueSummary{
 				Name:     cfg.Name,
 				Priority: cfg.Priority,
-				Provider: cfg.Provider,
 			})
 		}
 
@@ -404,7 +402,6 @@ func CreateQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 		cfg := &queueworker.QueueConfig{
 			Name:       req.Name,
 			Priority:   req.Priority,
-			Provider:   req.Provider,
 			Deployment: req.Deployment,
 			CreatedAt:  now,
 			UpdatedAt:  now,
@@ -602,7 +599,7 @@ func reloadFromYAML(ctx context.Context, store *queueworker.Store, dir string) (
 
 				fullName := queueworker.BuildFullQueueName(queueName, sq.Name)
 				reloaded = append(reloaded, fullName)
-				log.Printf("[QUEUEWORKER] Loaded: %s (provider=%s, priority=%d)", fullName, queue.Provider, sq.Priority)
+				log.Printf("[QUEUEWORKER] Loaded: %s (priority=%d)", fullName, sq.Priority)
 			}
 		}
 	}
@@ -624,7 +621,7 @@ func reloadFromYAML(ctx context.Context, store *queueworker.Store, dir string) (
 // The debug parameter controls whether verbose logs are printed
 func LoadQueueWorkersAtStartup(store *queueworker.Store, configDir string, debug bool) ([]string, error) {
 	ctx := context.Background()
-	reloaded, _, errors := reloadFromYAMLWithProviders(ctx, store, configDir, debug)
+	reloaded, errors := reloadFromYAML(ctx, store, configDir)
 
 	if len(errors) > 0 && debug {
 		for _, e := range errors {
@@ -646,53 +643,4 @@ func LoadQueueWorkersAtStartup(store *queueworker.Store, configDir string, debug
 	}
 
 	return reloaded, nil
-}
-
-// reloadFromYAMLWithProviders loads configs and returns provider types
-func reloadFromYAMLWithProviders(ctx context.Context, store *queueworker.Store, dir string, debug bool) ([]string, []string, []string) {
-	var reloaded []string
-	var providerTypes []string
-	var errors []string
-
-	yamls, err := queueworker.LoadAll(dir)
-	if err != nil {
-		errors = append(errors, "failed to load YAML files: "+err.Error())
-		return reloaded, providerTypes, errors
-	}
-
-	for _, y := range yamls {
-		for queueName, queueCfg := range y.Queues {
-			// Collect provider type
-			if queueCfg.Provider != "" && queueCfg.Provider != "worker" {
-				providerTypes = append(providerTypes, queueCfg.Provider)
-			}
-
-			// Convert to Queue and SubQueues (new two-table model)
-			queue, subQueues := queueCfg.ToQueueAndSubQueues(queueName)
-
-			// Save the parent queue
-			queueID, err := store.SaveQueue(ctx, queue)
-			if err != nil {
-				errors = append(errors, queueName+": failed to save queue: "+err.Error())
-				continue
-			}
-
-			// Save each sub-queue
-			for _, sq := range subQueues {
-				if err := store.SaveSubQueue(ctx, queueID, &sq); err != nil {
-					fullName := queueworker.BuildFullQueueName(queueName, sq.Name)
-					errors = append(errors, fullName+": failed to save sub-queue: "+err.Error())
-					continue
-				}
-
-				fullName := queueworker.BuildFullQueueName(queueName, sq.Name)
-				reloaded = append(reloaded, fullName)
-				if debug {
-					log.Printf("[QUEUEWORKER] Loaded: %s (provider=%s, priority=%d)", fullName, queue.Provider, sq.Priority)
-				}
-			}
-		}
-	}
-
-	return reloaded, providerTypes, errors
 }

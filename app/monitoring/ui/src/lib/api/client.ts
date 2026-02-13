@@ -354,26 +354,24 @@ export async function getQueueConfig(name: string): Promise<QueueConfigDetail> {
 export async function createQueueConfig(
 	name: string,
 	priority: number,
-	provider?: string,
 	deployment?: DeploymentConfig,
 	force?: boolean
 ): Promise<{ message: string; queue: QueueConfigDetail }> {
 	const params = force ? '?force=true' : '';
 	return fetchJson(`${BASE_URL}/queue_configs${params}`, {
 		method: 'POST',
-		body: JSON.stringify({ name, priority, provider, deployment })
+		body: JSON.stringify({ name, priority, deployment })
 	});
 }
 
 export async function updateQueueConfig(
 	name: string,
 	priority: number,
-	provider?: string,
 	deployment?: DeploymentConfig
 ): Promise<{ message: string; queue: QueueConfigDetail }> {
 	return fetchJson(`${BASE_URL}/queue_configs/${encodeURIComponent(name)}`, {
 		method: 'PUT',
-		body: JSON.stringify({ priority, provider, deployment })
+		body: JSON.stringify({ priority, deployment })
 	});
 }
 

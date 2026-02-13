@@ -16,6 +16,9 @@ var (
 	// Remote server mode flags
 	serverURL string
 	apiKey    string
+
+	// Redis URI flag
+	redisURI string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -56,7 +59,7 @@ func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf("runqy version %s (commit: %s, built: %s)\n", Version, GitCommit, BuildDate))
 
 	// Global flags
-	rootCmd.PersistentFlags().StringP("redis-uri", "", "", "Redis URI (overrides REDIS_HOST/REDIS_PORT)")
+	rootCmd.PersistentFlags().StringVar(&redisURI, "redis-uri", "", "Redis URI (e.g., redis://:password@host:port)")
 
 	// Remote server mode flags
 	rootCmd.PersistentFlags().StringVarP(&serverURL, "server", "s", "", "Remote server URL (e.g., https://runqy.example.com:3000)")
@@ -93,6 +96,17 @@ func initConfig() {
 	// Load configuration from environment
 	cfg = config.Load()
 
+	// Override config from CLI flags (CLI > env > defaults)
+	if apiKey != "" {
+		cfg.APIKey = apiKey
+	}
+
+	if redisURI != "" {
+		if err := cfg.ParseRedisURI(redisURI); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: invalid --redis-uri: %v\n", err)
+		}
+	}
+
 	// Load saved credentials if no --server flag provided
 	// Priority: CLI flags > env vars > saved credentials
 	if serverURL == "" {
@@ -106,8 +120,17 @@ func initConfig() {
 				// Only use saved API key if not already set via flag or env
 				if apiKey == "" && os.Getenv("RUNQY_API_KEY") == "" {
 					apiKey = creds.APIKey
+					cfg.APIKey = creds.APIKey
 				}
 			}
+		}
+	}
+
+	// Warn when running CLI commands without a server configured (local mode)
+	if serverURL == "" && len(os.Args) > 1 {
+		cmd := os.Args[1]
+		if cmd != "serve" && cmd != "login" && cmd != "version" && cmd != "help" {
+			fmt.Fprintln(os.Stderr, "Warning: No server configured. Using local database. Run 'runqy login' for remote mode.")
 		}
 	}
 }

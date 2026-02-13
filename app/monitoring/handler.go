@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Publikey/runqy/auth"
+	"github.com/Publikey/runqy/config"
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/Publikey/runqy/vaults"
 	"github.com/gorilla/mux"
@@ -66,6 +67,11 @@ type Options struct {
 	//
 	// This field is optional. If nil, authentication is disabled.
 	AuthStore *auth.Store
+
+	// Config is the centralized server configuration.
+	//
+	// This field is optional. Used by database info handler to avoid os.Getenv.
+	Config *config.Config
 }
 
 // HTTPHandler is a http.Handler for asynqmon application.
@@ -244,7 +250,7 @@ func muxRouter(opts Options, rc redis.UniversalClient, inspector *asynq.Inspecto
 
 	// Database info endpoint.
 	if db != nil {
-		api.HandleFunc("/database_info", newDatabaseInfoHandlerFunc(db)).Methods("GET")
+		api.HandleFunc("/database_info", newDatabaseInfoHandlerFunc(db, opts.Config)).Methods("GET")
 	}
 
 	// Vaults endpoints.

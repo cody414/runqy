@@ -184,7 +184,7 @@ func runConfigList(cmd *cobra.Command, args []string) error {
 	}
 	defer pgDB.Close()
 
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
@@ -204,18 +204,13 @@ func runConfigList(cmd *cobra.Command, args []string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tPRIORITY\tPROVIDER\tMODE\tGIT_URL")
+	fmt.Fprintln(w, "NAME\tPRIORITY\tMODE\tGIT_URL")
 
 	for _, queueName := range queues {
 		queueCfg, err := store.Get(ctx, queueName)
 		if err != nil || queueCfg == nil {
-			fmt.Fprintf(w, "%s\t-\t-\t-\t-\n", queueName)
+			fmt.Fprintf(w, "%s\t-\t-\t-\n", queueName)
 			continue
-		}
-
-		provider := queueCfg.Provider
-		if provider == "" {
-			provider = "worker"
 		}
 
 		mode := "-"
@@ -228,10 +223,9 @@ func runConfigList(cmd *cobra.Command, args []string) error {
 			gitURL = truncate(queueCfg.Deployment.GitURL, 50)
 		}
 
-		fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%d\t%s\t%s\n",
 			queueCfg.Name,
 			queueCfg.Priority,
-			provider,
 			mode,
 			gitURL,
 		)
@@ -255,18 +249,12 @@ func runConfigListRemote() error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tPRIORITY\tPROVIDER")
+	fmt.Fprintln(w, "NAME\tPRIORITY")
 
 	for _, cfg := range configs {
-		provider := cfg.Provider
-		if provider == "" {
-			provider = "worker"
-		}
-
-		fmt.Fprintf(w, "%s\t%d\t%s\n",
+		fmt.Fprintf(w, "%s\t%d\n",
 			cfg.Name,
 			cfg.Priority,
-			provider,
 		)
 	}
 
@@ -296,7 +284,7 @@ func runConfigReload(cmd *cobra.Command, args []string) error {
 	}
 	defer pgDB.Close()
 
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
@@ -439,7 +427,6 @@ func runConfigValidate(cmd *cobra.Command, args []string) error {
 type SimpleQueueYAML struct {
 	Name       string                    `yaml:"name"`
 	Priority   int                       `yaml:"priority"`
-	Provider   string                    `yaml:"provider,omitempty"`
 	Deployment *queueworker.DeploymentYAML `yaml:"deployment,omitempty"`
 }
 
@@ -461,7 +448,7 @@ func runConfigCreateLocal() error {
 	}
 	defer pgDB.Close()
 
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
@@ -597,7 +584,6 @@ func runConfigCreateRemote() error {
 			req := &CreateQueueRequest{
 				Name:     config.Name,
 				Priority: config.Priority,
-				Provider: config.Provider,
 			}
 			if config.Deployment != nil {
 				req.Deployment = &DeploymentConfigAPI{
@@ -607,6 +593,7 @@ func runConfigCreateRemote() error {
 					StartupCmd:         config.Deployment.StartupCmd,
 					Mode:               config.Deployment.Mode,
 					StartupTimeoutSecs: config.Deployment.StartupTimeoutSecs,
+					RedisStorage:       config.Deployment.RedisStorage,
 					Vaults:             config.Deployment.Vaults,
 					GitToken:           config.Deployment.GitToken,
 				}
@@ -736,7 +723,6 @@ func loadConfigsFromFile(filePath string) ([]*queueworker.QueueConfig, error) {
 	config := &queueworker.QueueConfig{
 		Name:      simple.Name,
 		Priority:  simple.Priority,
-		Provider:  simple.Provider,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -749,6 +735,7 @@ func loadConfigsFromFile(filePath string) ([]*queueworker.QueueConfig, error) {
 			StartupCmd:         simple.Deployment.StartupCmd,
 			Mode:               simple.Deployment.Mode,
 			StartupTimeoutSecs: simple.Deployment.StartupTimeoutSecs,
+			RedisStorage:       simple.Deployment.RedisStorage,
 			Vaults:             simple.Deployment.Vaults,
 			GitToken:           simple.Deployment.GitToken,
 		}
@@ -785,7 +772,7 @@ func runConfigRemoveLocal(queueName string) error {
 	}
 	defer pgDB.Close()
 
-	redisAddr, err := models.BuildRedisConns()
+	redisAddr, err := models.BuildRedisConns(GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}

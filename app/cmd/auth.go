@@ -116,8 +116,8 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	// If API key not provided via flag, prompt for it
 	apiKeyToSave := loginAPIKey
 	if apiKeyToSave == "" {
-		// Check environment variable
-		apiKeyToSave = os.Getenv("RUNQY_API_KEY")
+		// Check centralized config (includes env var)
+		apiKeyToSave = GetConfig().APIKey
 		if apiKeyToSave == "" {
 			// Prompt user
 			fmt.Print("API Key: ")

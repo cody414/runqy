@@ -45,10 +45,31 @@ var (
 
 // GetEncryptor returns the singleton Encryptor instance.
 // It initializes from the RUNQY_VAULT_MASTER_KEY environment variable.
+// Deprecated: Use InitEncryptor(masterKey) instead for centralized config.
 func GetEncryptor() *Encryptor {
 	once.Do(func() {
 		globalEncryptor = &Encryptor{}
 		globalEncryptor.initFromEnv()
+	})
+	return globalEncryptor
+}
+
+// InitEncryptor creates and sets the global Encryptor using the provided master key.
+// This should be called during server startup with the key from config.
+func InitEncryptor(masterKey string) *Encryptor {
+	once.Do(func() {
+		globalEncryptor = &Encryptor{}
+		if masterKey == "" {
+			globalEncryptor.enabled = false
+			return
+		}
+		key, err := base64.StdEncoding.DecodeString(masterKey)
+		if err != nil || len(key) != keyLength {
+			globalEncryptor.enabled = false
+			return
+		}
+		globalEncryptor.key = key
+		globalEncryptor.enabled = true
 	})
 	return globalEncryptor
 }

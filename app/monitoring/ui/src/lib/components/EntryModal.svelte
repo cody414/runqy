@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { Switch } from '@skeletonlabs/skeleton-svelte';
 	import type { VaultEntryView } from '$lib/api/types';
 
 	interface Props {
@@ -75,10 +74,10 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
-		class="fixed inset-0 z-50 bg-surface-950/50 flex justify-center items-center p-4"
+		class="fixed inset-0 z-50 bg-surface-950/70 backdrop-blur-sm flex justify-center items-center p-4"
 		onclick={handleBackdropClick}
 	>
-		<div class="card preset-outlined-surface-200-800 bg-surface-100-900 w-full max-w-md p-6 shadow-xl">
+		<div class="card preset-outlined-surface-200-800 bg-surface-100-900 ring-1 ring-surface-300 dark:ring-surface-600 w-full max-w-md p-6 shadow-xl">
 			<h2 class="h4 mb-4">
 				{mode === 'create' ? 'Add Entry' : 'Edit Entry'}
 			</h2>
@@ -110,13 +109,13 @@
 						{/if}
 					</label>
 
-					<div class="flex items-center gap-3">
-						<Switch bind:checked={isSecret} disabled={loading} />
+					<label class="flex items-center gap-3 cursor-pointer">
+						<input type="checkbox" bind:checked={isSecret} class="checkbox" disabled={loading} />
 						<span class="text-sm">Secret value</span>
 						<span class="text-xs text-surface-500">
 							{isSecret ? 'Value will be masked in UI' : 'Value will be visible in UI'}
 						</span>
-					</div>
+					</label>
 
 					{#if error}
 						<aside class="alert preset-filled-error-500">

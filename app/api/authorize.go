@@ -4,16 +4,14 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/Publikey/runqy/models"
 	"github.com/gin-gonic/gin"
 )
 
-func Authorize() gin.HandlerFunc {
+func Authorize(expectedKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		expectedKey := os.Getenv("RUNQY_API_KEY")
 
 		// Try Authorization: Bearer header first
 		providedKey := ""

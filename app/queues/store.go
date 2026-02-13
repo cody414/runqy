@@ -16,7 +16,6 @@ import (
 type QueueRow struct {
 	ID           int            `db:"id"`
 	Name         sql.NullString `db:"name"`
-	Provider     sql.NullString `db:"provider"`
 	Deployment   sql.NullString `db:"deployment"`     // JSON stored as TEXT for SQLite compatibility
 	InputSchema  sql.NullString `db:"input_schema"`   // JSON stored as TEXT
 	OutputSchema sql.NullString `db:"output_schema"`  // JSON stored as TEXT
@@ -88,9 +87,8 @@ func (s *Store) SaveQueue(ctx context.Context, queue *Queue) (int, error) {
 		// SQLite: use INSERT OR REPLACE and get ID separately
 		query := `
 			INSERT INTO queues (name, provider, deployment, input_schema, output_schema, description, enabled)
-			VALUES (?, ?, ?, ?, ?, ?, ?)
+			VALUES (?, '', ?, ?, ?, ?, ?)
 			ON CONFLICT (name) DO UPDATE SET
-				provider = excluded.provider,
 				deployment = excluded.deployment,
 				input_schema = excluded.input_schema,
 				output_schema = excluded.output_schema,
@@ -100,7 +98,6 @@ func (s *Store) SaveQueue(ctx context.Context, queue *Queue) (int, error) {
 		`
 		_, err := s.db.ExecContext(ctx, query,
 			queue.Name,
-			queue.Provider,
 			deploymentJSON,
 			inputSchemaJSON,
 			outputSchemaJSON,
@@ -123,9 +120,8 @@ func (s *Store) SaveQueue(ctx context.Context, queue *Queue) (int, error) {
 	// PostgreSQL: use RETURNING
 	query := s.db.Rebind(`
 		INSERT INTO queues (name, provider, deployment, input_schema, output_schema, description, enabled)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, '', ?, ?, ?, ?, ?)
 		ON CONFLICT (name) DO UPDATE SET
-			provider = excluded.provider,
 			deployment = excluded.deployment,
 			input_schema = excluded.input_schema,
 			output_schema = excluded.output_schema,
@@ -138,7 +134,6 @@ func (s *Store) SaveQueue(ctx context.Context, queue *Queue) (int, error) {
 	var id int
 	err := s.db.GetContext(ctx, &id, query,
 		queue.Name,
-		queue.Provider,
 		deploymentJSON,
 		inputSchemaJSON,
 		outputSchemaJSON,
@@ -199,7 +194,6 @@ func (s *Store) Save(ctx context.Context, cfg *QueueConfig) error {
 	// Create or update the parent queue
 	queue := &Queue{
 		Name:        parent,
-		Provider:    cfg.Provider,
 		Deployment:  cfg.Deployment,
 		Enabled:     true,
 		Description: "",
@@ -223,7 +217,7 @@ func (s *Store) Save(ctx context.Context, cfg *QueueConfig) error {
 // GetQueue retrieves a parent queue by name
 func (s *Store) GetQueue(ctx context.Context, queueName string) (*Queue, error) {
 	query := s.db.Rebind(`
-		SELECT id, name, provider, deployment, input_schema, output_schema, description, enabled, created_at, updated_at
+		SELECT id, name, deployment, input_schema, output_schema, description, enabled, created_at, updated_at
 		FROM queues
 		WHERE name = ?
 	`)
@@ -243,7 +237,7 @@ func (s *Store) GetQueue(ctx context.Context, queueName string) (*Queue, error) 
 // GetQueueByID retrieves a parent queue by ID
 func (s *Store) GetQueueByID(ctx context.Context, id int) (*Queue, error) {
 	query := s.db.Rebind(`
-		SELECT id, name, provider, deployment, input_schema, output_schema, description, enabled, created_at, updated_at
+		SELECT id, name, deployment, input_schema, output_schema, description, enabled, created_at, updated_at
 		FROM queues
 		WHERE id = ?
 	`)
@@ -269,9 +263,6 @@ func (s *Store) rowToQueue(row *QueueRow) *Queue {
 
 	if row.Name.Valid {
 		queue.Name = row.Name.String
-	}
-	if row.Provider.Valid {
-		queue.Provider = row.Provider.String
 	}
 	if row.Description.Valid {
 		queue.Description = row.Description.String
@@ -424,7 +415,6 @@ func (s *Store) Get(ctx context.Context, queueName string) (*QueueConfig, error)
 	return &QueueConfig{
 		Name:       queueName,
 		Priority:   matchingSubQueue.Priority,
-		Provider:   queue.Provider,
 		Deployment: queue.Deployment,
 		CreatedAt:  queue.CreatedAt,
 		UpdatedAt:  queue.UpdatedAt,
@@ -729,7 +719,6 @@ func (s *Store) ListByPrefix(ctx context.Context, prefix string) ([]*QueueConfig
 		cfg := &QueueConfig{
 			Name:       BuildFullQueueName(qws.Name, sq.Name),
 			Priority:   sq.Priority,
-			Provider:   qws.Provider,
 			Deployment: qws.Deployment,
 			CreatedAt:  qws.CreatedAt,
 			UpdatedAt:  qws.UpdatedAt,
@@ -809,7 +798,7 @@ func (s *Store) RestoreSubQueue(ctx context.Context, queueName string) error {
 // GetQueueIncludingDisabled retrieves a parent queue by name regardless of enabled status
 func (s *Store) GetQueueIncludingDisabled(ctx context.Context, queueName string) (*Queue, error) {
 	query := s.db.Rebind(`
-		SELECT id, name, provider, deployment, input_schema, output_schema, description, enabled, created_at, updated_at
+		SELECT id, name, deployment, input_schema, output_schema, description, enabled, created_at, updated_at
 		FROM queues
 		WHERE name = ?
 	`)

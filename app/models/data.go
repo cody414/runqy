@@ -3,8 +3,8 @@ package models
 import (
 	"crypto/tls"
 	"fmt"
-	"os"
 
+	"github.com/Publikey/runqy/config"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 )
@@ -15,13 +15,12 @@ type RedisConns struct {
 }
 
 // BuildRedisConns returns configured go-redis client and Asynq options.
-func BuildRedisConns() (*RedisConns, error) {
-	addr := fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT"))
-	password := os.Getenv("REDIS_PASSWORD")
-	useTLS := os.Getenv("REDIS_TLS") == "true" // e.g., REDIS_TLS=true
+func BuildRedisConns(cfg *config.Config) (*RedisConns, error) {
+	addr := fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort)
+	password := cfg.RedisPassword
 
 	var tlsConfig *tls.Config
-	if useTLS {
+	if cfg.RedisTLS {
 		tlsConfig = &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}
@@ -41,5 +40,4 @@ func BuildRedisConns() (*RedisConns, error) {
 		TLSConfig: tlsConfig,
 	}
 	return &RedisConns{RDB: rdb, AsynqOpt: redisOpt}, nil
-
 }

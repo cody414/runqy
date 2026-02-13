@@ -301,7 +301,6 @@ func (c *APIClient) GetWorker(workerID string) (*WorkerInfoAPI, error) {
 type QueueConfigAPI struct {
 	Name       string                `json:"name"`
 	Priority   int                   `json:"priority"`
-	Provider   string                `json:"provider,omitempty"`
 	Deployment *DeploymentConfigAPI  `json:"deployment,omitempty"`
 }
 
@@ -313,6 +312,7 @@ type DeploymentConfigAPI struct {
 	StartupCmd         string   `json:"startup_cmd"`
 	Mode               string   `json:"mode,omitempty"`
 	StartupTimeoutSecs int      `json:"startup_timeout_secs,omitempty"`
+	RedisStorage       *bool    `json:"redis_storage,omitempty"`
 	Vaults             []string `json:"vaults,omitempty"`
 	GitToken           string   `json:"git_token,omitempty"`
 }
@@ -327,7 +327,6 @@ type ConfigListResponse struct {
 type QueueSummaryAPI struct {
 	Name     string `json:"name"`
 	Priority int    `json:"priority"`
-	Provider string `json:"provider,omitempty"`
 }
 
 // ListConfigs fetches all queue configurations
@@ -371,7 +370,6 @@ func (c *APIClient) ReloadConfigs() (*ReloadResponse, error) {
 type CreateQueueRequest struct {
 	Name       string               `json:"name"`
 	Priority   int                  `json:"priority"`
-	Provider   string               `json:"provider,omitempty"`
 	Deployment *DeploymentConfigAPI `json:"deployment,omitempty"`
 }
 
