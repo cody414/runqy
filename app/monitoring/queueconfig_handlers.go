@@ -35,26 +35,49 @@ type QueueConfigDetailResponse struct {
 
 func newListQueueConfigsHandlerFunc(store *queueworker.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		queues, err := store.ListQueues(r.Context())
+		ctx := r.Context()
+
+		// Get all enabled parent queues (independent of sub-queue state)
+		parentQueues, err := store.ListParentQueues(ctx)
 		if err != nil {
 			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
 			return
 		}
 
-		// Get detail for each queue
-		details := make([]QueueConfigDetailResponse, 0, len(queues))
-		for _, q := range queues {
-			cfg, err := store.Get(r.Context(), q)
-			if err != nil || cfg == nil {
+		details := make([]QueueConfigDetailResponse, 0)
+		for _, parentName := range parentQueues {
+			queue, err := store.GetQueue(ctx, parentName)
+			if err != nil || queue == nil {
 				continue
 			}
-			details = append(details, QueueConfigDetailResponse{
-				Name:       cfg.Name,
-				Priority:   cfg.Priority,
-				Deployment: cfg.Deployment,
-				CreatedAt:  cfg.CreatedAt,
-				UpdatedAt:  cfg.UpdatedAt,
-			})
+
+			// Get ALL sub-queues (including disabled) so deployment config is always visible
+			allSubQueues, err := store.ListAllSubQueuesForQueue(ctx, queue.ID)
+			if err != nil {
+				continue
+			}
+
+			if len(allSubQueues) == 0 {
+				// No sub-queues at all — add parent-level entry with .default name
+				details = append(details, QueueConfigDetailResponse{
+					Name:       queueworker.BuildFullQueueName(parentName, queueworker.DefaultSubQueueName),
+					Priority:   0,
+					Deployment: queue.Deployment,
+					CreatedAt:  queue.CreatedAt,
+					UpdatedAt:  queue.UpdatedAt,
+				})
+			} else {
+				for _, sq := range allSubQueues {
+					fullName := queueworker.BuildFullQueueName(parentName, sq.Name)
+					details = append(details, QueueConfigDetailResponse{
+						Name:       fullName,
+						Priority:   sq.Priority,
+						Deployment: queue.Deployment,
+						CreatedAt:  queue.CreatedAt,
+						UpdatedAt:  queue.UpdatedAt,
+					})
+				}
+			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")

@@ -163,6 +163,7 @@ func (q *QueueYAML) ToQueueAndSubQueues(baseName string) (*Queue, []SubQueue) {
 			subQueues = append(subQueues, SubQueue{
 				Name:     sq.Name,
 				Priority: sq.Priority,
+				Enabled:  true,
 			})
 		}
 	} else {
@@ -170,6 +171,7 @@ func (q *QueueYAML) ToQueueAndSubQueues(baseName string) (*Queue, []SubQueue) {
 		subQueues = append(subQueues, SubQueue{
 			Name:     DefaultSubQueueName,
 			Priority: q.Priority,
+			Enabled:  true,
 		})
 	}
 

@@ -154,18 +154,20 @@ func (s *Store) SaveSubQueue(ctx context.Context, queueID int, subQueue *SubQueu
 	var query string
 	if driverName == "sqlite" {
 		query = `
-			INSERT INTO sub_queues (queue_id, name, priority)
-			VALUES (?, ?, ?)
+			INSERT INTO sub_queues (queue_id, name, priority, enabled)
+			VALUES (?, ?, ?, 1)
 			ON CONFLICT (queue_id, name) DO UPDATE SET
 				priority = excluded.priority,
+				enabled = excluded.enabled,
 				updated_at = CURRENT_TIMESTAMP
 		`
 	} else {
 		query = s.db.Rebind(`
-			INSERT INTO sub_queues (queue_id, name, priority)
-			VALUES (?, ?, ?)
+			INSERT INTO sub_queues (queue_id, name, priority, enabled)
+			VALUES (?, ?, ?, true)
 			ON CONFLICT (queue_id, name) DO UPDATE SET
 				priority = excluded.priority,
+				enabled = excluded.enabled,
 				updated_at = NOW()
 		`)
 	}
@@ -209,6 +211,7 @@ func (s *Store) Save(ctx context.Context, cfg *QueueConfig) error {
 		QueueID:  queueID,
 		Name:     subQueueName,
 		Priority: cfg.Priority,
+		Enabled:  true,
 	}
 
 	return s.SaveSubQueue(ctx, queueID, subQueue)
@@ -317,6 +320,29 @@ func (s *Store) ListSubQueues(ctx context.Context, queueID int) ([]SubQueue, err
 	err := s.db.SelectContext(ctx, &rows, query, queueID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sub-queues: %w", err)
+	}
+
+	subQueues := make([]SubQueue, 0, len(rows))
+	for _, row := range rows {
+		subQueues = append(subQueues, s.rowToSubQueue(&row))
+	}
+
+	return subQueues, nil
+}
+
+// ListAllSubQueuesForQueue retrieves all sub-queues for a parent queue regardless of enabled state
+func (s *Store) ListAllSubQueuesForQueue(ctx context.Context, queueID int) ([]SubQueue, error) {
+	query := s.db.Rebind(`
+		SELECT id, queue_id, name, priority, enabled, created_at, updated_at
+		FROM sub_queues
+		WHERE queue_id = ?
+		ORDER BY priority DESC
+	`)
+
+	var rows []SubQueueRow
+	err := s.db.SelectContext(ctx, &rows, query, queueID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all sub-queues: %w", err)
 	}
 
 	subQueues := make([]SubQueue, 0, len(rows))
