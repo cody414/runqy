@@ -1,0 +1,189 @@
+# examples.yaml — All example queue configurations
+#
+# Copy individual queue blocks into your runqy config,
+# or use this file as a reference for your own queues.
+
+queues:
+  # ── GPU Inference ──────────────────────────────────────
+  # Stable Diffusion image generation on GPU workers.
+  # Requires: NVIDIA GPU with 8GB+ VRAM
+  gpu-inference:
+    priority: 10
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/gpu-inference"
+      startup_cmd: "python main.py"
+      mode: "long_running"
+      env_vars:
+        CUDA_VISIBLE_DEVICES: "0"
+      startup_timeout_secs: 120  # Model loading takes time
+      redis_storage: true
+    input:
+      - name: "prompt"
+        type: ["string"]
+      - name: "negative_prompt"
+        type: ["string"]
+      - name: "steps"
+        type: ["int"]
+      - name: "width"
+        type: ["int"]
+      - name: "height"
+        type: ["int"]
+      - name: "seed"
+        type: ["int"]
+    output:
+      - name: "image_base64"
+        type: ["string"]
+      - name: "seed"
+        type: ["int"]
+
+  # ── Webhook Processor ──────────────────────────────────
+  # Reliable async webhook handling (Stripe, GitHub, etc.)
+  webhook-processor:
+    priority: 8
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/webhook-processor"
+      startup_cmd: "python main.py"
+      mode: "long_running"
+      env_vars: {}
+      startup_timeout_secs: 30
+      redis_storage: true
+    input:
+      - name: "source"
+        type: ["string"]
+      - name: "event_type"
+        type: ["string"]
+      - name: "data"
+        type: ["object"]
+    output:
+      - name: "processed"
+        type: ["bool"]
+      - name: "action"
+        type: ["string"]
+
+  # ── Data Pipeline ──────────────────────────────────────
+  # ETL: fetch, transform, output. One-shot mode.
+  data-pipeline:
+    priority: 5
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/data-pipeline"
+      startup_cmd: "python main.py"
+      mode: "one_shot"
+      env_vars: {}
+      startup_timeout_secs: 30
+      redis_storage: true
+    input:
+      - name: "pipeline"
+        type: ["string"]
+      - name: "params"
+        type: ["object"]
+    output:
+      - name: "records"
+        type: ["int"]
+      - name: "data"
+        type: ["object"]
+      - name: "timestamp"
+        type: ["string"]
+
+  # ── Scheduled Tasks ────────────────────────────────────
+  # Cron-like jobs: healthchecks, reports, cleanup.
+  scheduled-tasks:
+    priority: 3
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/scheduled-tasks"
+      startup_cmd: "python main.py"
+      mode: "one_shot"
+      env_vars: {}
+      startup_timeout_secs: 30
+      redis_storage: true
+    input:
+      - name: "job"
+        type: ["string"]
+      - name: "config"
+        type: ["object"]
+    output:
+      - name: "status"
+        type: ["string"]
+      - name: "details"
+        type: ["object"]
+      - name: "ran_at"
+        type: ["string"]
+
+  # ── Multi-Queue: Critical ──────────────────────────────
+  # High-priority queue for urgent tasks (notifications, alerts)
+  multi-critical:
+    priority: 10
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/multi-queue"
+      startup_cmd: "python main.py"
+      mode: "long_running"
+      env_vars: {}
+      startup_timeout_secs: 30
+      redis_storage: true
+    input:
+      - name: "action"
+        type: ["string"]
+      - name: "data"
+        type: ["object"]
+    output:
+      - name: "result"
+        type: ["string"]
+      - name: "queue_stats"
+        type: ["object"]
+
+  # ── Multi-Queue: Standard ──────────────────────────────
+  # Normal priority for regular processing
+  multi-standard:
+    priority: 5
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/multi-queue"
+      startup_cmd: "python main.py"
+      mode: "long_running"
+      env_vars: {}
+      startup_timeout_secs: 30
+      redis_storage: true
+    input:
+      - name: "action"
+        type: ["string"]
+      - name: "data"
+        type: ["object"]
+    output:
+      - name: "result"
+        type: ["string"]
+      - name: "queue_stats"
+        type: ["object"]
+
+  # ── Multi-Queue: Bulk ──────────────────────────────────
+  # Low priority for batch/bulk operations
+  multi-bulk:
+    priority: 1
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/multi-queue"
+      startup_cmd: "python main.py"
+      mode: "long_running"
+      env_vars: {}
+      startup_timeout_secs: 30
+      redis_storage: true
+    input:
+      - name: "action"
+        type: ["string"]
+      - name: "data"
+        type: ["object"]
+    output:
+      - name: "result"
+        type: ["string"]
+      - name: "queue_stats"
+        type: ["object"]
