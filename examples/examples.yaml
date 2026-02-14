@@ -1,0 +1,29 @@
+queues:
+  # Star Runqy Example - Vault Secrets Tutorial
+  # Demonstrates how to use vault secrets in tasks
+  star-runqy:
+    priority: 5
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/star-runqy"
+      startup_cmd: "python main.py"
+      mode: "one_shot"
+      env_vars:
+        GITHUB_TOKEN: "{{ vault.GITHUB_TOKEN }}"  # GitHub token from vault
+      startup_timeout_secs: 30
+      redis_storage: true
+    input: []  # No input required
+    output:
+      - name: "success"
+        type:
+          - "bool"
+      - name: "message" 
+        type:
+          - "string"
+      - name: "emoji_message"
+        type:
+          - "string"
+      - name: "error"
+        type:
+          - "string"
