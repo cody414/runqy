@@ -5,50 +5,118 @@
 <h1 align="center">runqy</h1>
 
 <p align="center">
-  A distributed task queue system with server-driven bootstrap architecture.
-  <br>
-  <a href="https://docs.runqy.com"><strong>Documentation</strong></a> · <a href="https://runqy.com"><strong>Website</strong></a>
+  <strong>Open-source GPU-native task queue for AI workloads. The Modal alternative you can self-host.</strong>
 </p>
 
 <p align="center">
-  Built on <a href="https://github.com/hibiken/asynq">asynq</a>
+  <a href="https://github.com/Publikey/runqy/stargazers"><img src="https://img.shields.io/github/stars/Publikey/runqy?style=flat&logo=github" alt="GitHub Stars"></a>
+  <a href="https://github.com/Publikey/runqy/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Publikey/runqy" alt="License"></a>
+  <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go" alt="Go Version"></a>
+  <a href="https://github.com/Publikey/runqy-python"><img src="https://img.shields.io/badge/Python_SDK-Available-3776AB?style=flat&logo=python" alt="Python SDK"></a>
+  <a href="https://github.com/Publikey/runqy/actions"><img src="https://img.shields.io/github/actions/workflow/status/Publikey/runqy/ci.yml?branch=main" alt="Build Status"></a>
 </p>
-
-## Features
-
-- REST API for enqueueing and monitoring tasks
-- Redis-backed persistent queue with retry support
-- PostgreSQL storage for queue worker configurations
-- YAML-based queue worker definitions with schema validation
-- Built-in web dashboard for real-time monitoring
-- Prometheus metrics endpoint (`/metrics`) for advanced monitoring and alerting
-- Swagger API documentation
-- Hot-reload of queue configurations (file watching or git polling)
-
-## Why runqy?
-
-**Your workers, your machines, your rules.**
-
-- **Use hardware you already have** — Your gaming GPU, lab server, or cloud VMs. Anything can become a worker.
-- **No vendor lock-in** — Mix providers freely: on-prem, AWS, GCP, Lambda. Your code stays the same.
-- **Free and open source** — No per-task pricing. Self-host the broker, run workers anywhere.
-- **Zero migration pain** — Switching providers? Moving in-house? Workers move, code doesn't change.
-
-## How It Works
 
 <p align="center">
-  <img src="assets/architecture.png" alt="runqy architecture" width="700">
+  <a href="https://docs.runqy.com"><strong>Documentation</strong></a> · 
+  <a href="https://runqy.com"><strong>Website</strong></a> · 
+  <a href="#examples">Examples</a> · 
+  <a href="#contributing">Contributing</a>
 </p>
 
-Tasks flow from clients through the runqy server to queues, then to workers running anywhere—on-premise servers, AWS, GCP, Azure, or Kubernetes. Results return through the same path.
+---
 
-## Zero-touch Deployment
+## Why Runqy?
 
-<p align="center">
-  <img src="assets/code_pull.png" alt="zero-touch deployment flow" width="700">
-</p>
+🎯 **GPU-native workers** — First-class GPU support for ML/AI workloads  
+📄 **Deployment YAML** — Zero-touch worker deployment from Git  
+🗄️ **Multi-backend** — Redis, PostgreSQL, or SQLite backend storage  
+🔐 **Built-in vault** — Secure secrets management with env_vars  
+🐍 **Go server + Python SDK** — Robust server, familiar developer experience  
+📊 **Web monitoring UI** — Real-time dashboard with Prometheus metrics  
 
-Workers are stateless. On startup, they connect to the runqy server, pull your code from Git, install dependencies, and start processing—no manual setup required. Update your code, and workers automatically pick up changes on their next restart.
+---
+
+## Quick Start
+
+Get Runqy running in under 60 seconds:
+
+```bash
+# 1. Start the stack
+curl -O https://raw.githubusercontent.com/Publikey/runqy/main/docker-compose.quickstart.yml
+docker-compose -f docker-compose.quickstart.yml up -d
+
+# 2. Enqueue a task
+pip install runqy-python
+python -c "
+import runqy
+client = runqy.Client('http://localhost:3000')
+task = client.enqueue('quickstart-oneshot', {'message': 'Hello World!'})
+print(f'Task ID: {task.id}')
+"
+
+# 3. Check results
+open http://localhost:3000/monitoring/
+```
+
+## Code Example
+
+Write tasks with simple decorators:
+
+```python
+from runqy import task, load
+
+@load
+def setup():
+    """Load models once when worker starts"""
+    import torch
+    return torch.load('my_model.pt')
+
+@task
+def process_image(image_url: str, model) -> dict:
+    """Process on every task execution"""
+    # GPU-accelerated inference
+    result = model.predict(image_url)
+    return {"prediction": result, "confidence": 0.95}
+```
+
+Deploy with YAML:
+
+```yaml
+# deployment/image-processor.yaml
+name: image-processor
+runtime: python
+git_url: https://github.com/your-org/ml-tasks
+env_vars:
+  MODEL_PATH: /models/resnet50.pt
+  GPU_MEMORY: "8GB"
+```
+
+## Feature Comparison
+
+| Feature | Runqy | Celery | Temporal | Modal | BullMQ | Inngest |
+|---------|-------|--------|----------|-------|--------|---------|
+| **GPU Support** | ✅ Native | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Self-hosted** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| **Deployment YAML** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Vault Secrets** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Multi-backend** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Monitoring UI** | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
+
+---
+
+## Examples
+
+Explore real-world use cases:
+
+- **[quickstart-oneshot](examples/quickstart-oneshot/)** — Simple task execution
+- **[quickstart-longrunning](examples/quickstart-longrunning/)** — Background processes  
+- **[star-runqy](examples/star-runqy/)** — Vault secrets tutorial
+- **[image-classifier](examples/image-classifier/)** — GPU-accelerated ML inference
+- **[data-pipeline](examples/data-pipeline/)** — Multi-step data processing
+- **[model-training](examples/model-training/)** — Distributed training jobs
+- **[api-scraper](examples/api-scraper/)** — Rate-limited web scraping
+
+---
 
 ## Installation
 
@@ -70,73 +138,91 @@ iwr https://raw.githubusercontent.com/publikey/runqy/main/install.ps1 -useb | ie
 docker pull ghcr.io/publikey/runqy:latest
 ```
 
+### From Source
+
+```bash
+git clone https://github.com/Publikey/runqy.git
+cd runqy
+go build -o runqy ./app
+```
+
 ## Requirements
 
-- Redis
-- PostgreSQL (only for production - SQLite is embedded for development)
-
-## Quick Start
-
-The fastest way to try runqy:
-
-```bash
-curl -O https://raw.githubusercontent.com/Publikey/runqy/main/docker-compose.quickstart.yml
-docker-compose -f docker-compose.quickstart.yml up -d
-```
-
-Then visit http://localhost:3000/monitoring/
-
-See the [Quickstart Guide](https://docs.runqy.com/getting-started/quickstart/) for full walkthrough including enqueueing tasks, or check [Installation Methods](https://docs.runqy.com/getting-started/installation/) for other setup options.
-
-## CLI
-
-runqy includes a CLI for managing queues, tasks, and workers locally or remotely.
-
-```bash
-runqy queue list          # List queues
-runqy task enqueue -q myqueue -p '{"data":"value"}'
-runqy worker list         # List workers
-```
-
-See [CLI Reference](https://docs.runqy.com/server/cli/) for full documentation.
+- **Development:** Built-in SQLite (zero setup)
+- **Production:** Redis + PostgreSQL
 
 ## Configuration
 
-Configure via environment variables or YAML files. Key variables:
-- `REDIS_HOST`, `REDIS_PASSWORD` - Redis connection
-- `RUNQY_API_KEY` - API authentication
-- `QUEUE_WORKERS_DIR` - Path to queue YAML configs
+Configure via environment variables or YAML:
 
-See [Configuration Reference](https://docs.runqy.com/server/configuration/) for full documentation.
+```bash
+# Core settings
+export REDIS_HOST=localhost:6379
+export RUNQY_API_KEY=your-secret-key
+export QUEUE_WORKERS_DIR=./deployment
+
+# Optional
+export PROMETHEUS_ADDRESS=http://localhost:9090
+export VAULT_ENABLED=true
+```
+
+See [Configuration Reference](https://docs.runqy.com/server/configuration/) for all options.
+
+## CLI Reference
+
+Manage your deployment locally or remotely:
+
+```bash
+runqy queue list                    # List all queues
+runqy queue create -f config.yaml  # Deploy queue worker
+
+runqy task enqueue -q myqueue -p '{"key":"value"}'  # Enqueue task
+runqy task list -q myqueue                          # List tasks
+
+runqy worker list                   # List active workers
+runqy worker logs -w worker-123     # Stream worker logs
+
+runqy vault set SECRET_KEY value    # Store secrets
+runqy vault list                    # List vault keys
+```
 
 ## Monitoring
 
-The web dashboard at `/monitoring` provides real-time visibility into queues, tasks, and workers. On first access, you'll be prompted to create an admin account to secure the dashboard.
+Access the web dashboard at `/monitoring` for real-time insights:
 
-For advanced monitoring, runqy exposes Prometheus metrics at `/metrics`:
+- Queue status and throughput
+- Task execution history  
+- Worker health and logs
+- Resource utilization
 
-```yaml
-# prometheus.yml
-scrape_configs:
-  - job_name: 'runqy'
-    static_configs:
-      - targets: ['localhost:3000']
-```
+For advanced monitoring, Runqy exposes Prometheus metrics at `/metrics`. See the [Monitoring Guide](https://docs.runqy.com/guides/monitoring/) for Grafana dashboards and alerting.
 
-Optionally, set `PROMETHEUS_ADDRESS` to enable time-series charts in the dashboard:
-```bash
-export PROMETHEUS_ADDRESS=http://localhost:9090
-```
+## Architecture
 
-See [Monitoring Guide](https://docs.runqy.com/guides/monitoring/) for full documentation including Grafana dashboards and alerting.
+Tasks flow from clients → runqy server → queues → workers running anywhere. Workers are stateless and pull code from Git on startup.
 
-## See Also
+<p align="center">
+  <img src="assets/architecture.png" alt="runqy architecture" width="700">
+</p>
 
-- [asynq](https://github.com/hibiken/asynq) - The distributed task queue library that powers runqy
-- [runqy-worker](https://github.com/Publikey/runqy-worker) - Task processor ([Docker images](https://ghcr.io/publikey/runqy-worker))
-- [runqy-python](https://github.com/Publikey/runqy-python) - Python SDK
-- [Documentation](https://docs.runqy.com) - Full documentation
+**Zero-touch Deployment:** Workers connect, pull your code, install dependencies, and start processing—no manual setup required.
 
-## License
+<p align="center">
+  <img src="assets/code_pull.png" alt="zero-touch deployment" width="700">
+</p>
 
-MIT License - see [LICENSE](LICENSE) for details.
+## Links
+
+- 📖 **[Documentation](https://docs.runqy.com)** — Complete guides and API reference
+- 🌐 **[Website](https://runqy.com)** — Project homepage  
+- 🐍 **[Python SDK](https://github.com/Publikey/runqy-python)** — Client library
+- 🔧 **[Worker Runtime](https://github.com/Publikey/runqy-worker)** — Task processor
+- 🤝 **[Contributing](CONTRIBUTING.md)** — How to contribute
+- 📄 **[License](LICENSE)** — MIT License
+
+---
+
+<p align="center">
+  <strong>Your workers, your machines, your rules.</strong><br>
+  Built on <a href="https://github.com/hibiken/asynq">asynq</a> • Made with ❤️ for AI developers
+</p>
