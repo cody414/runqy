@@ -25,6 +25,12 @@
 
 ---
 
+<p align="center">
+  <img src="assets/demo.gif" alt="Runqy demo" width="800">
+</p>
+
+---
+
 ## Why Runqy?
 
 🎯 **GPU-native workers** — First-class GPU support for ML/AI workloads  
