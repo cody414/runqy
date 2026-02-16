@@ -111,10 +111,10 @@ Explore real-world use cases:
 - **[quickstart-oneshot](examples/quickstart-oneshot/)** — Simple task execution
 - **[quickstart-longrunning](examples/quickstart-longrunning/)** — Background processes  
 - **[star-runqy](examples/star-runqy/)** — Vault secrets tutorial
-- **[image-classifier](examples/image-classifier/)** — GPU-accelerated ML inference
-- **[data-pipeline](examples/data-pipeline/)** — Multi-step data processing
-- **[model-training](examples/model-training/)** — Distributed training jobs
-- **[api-scraper](examples/api-scraper/)** — Rate-limited web scraping
+- **image-classifier** — GPU-accelerated ML inference *(coming soon)*
+- **data-pipeline** — Multi-step data processing *(coming soon)*
+- **model-training** — Distributed training jobs *(coming soon)*
+- **api-scraper** — Rate-limited web scraping *(coming soon)*
 
 ---
 
