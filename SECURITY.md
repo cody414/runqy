@@ -15,7 +15,7 @@ We recommend always running the latest version of Runqy.
 
 Instead, please report them privately:
 
-1. **Email:** [security@runqy.com](mailto:security@runqy.com)
+1. **Email:** [contact@runqy.com](mailto:contact@runqy.com)
 2. **GitHub:** Use [private vulnerability reporting](https://github.com/Publikey/runqy/security/advisories/new)
 
 ### What to include
