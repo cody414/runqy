@@ -1,88 +1,70 @@
-# Runqy Demo — VHS Script
-# Generate with: vhs assets/demo.tape
-
-Output assets/demo.gif
-Set FontSize 14
-Set Width 1200
-Set Height 600
+# Runqy Demo v7 — Clean binary startup
+Output "/tmp/runqy-review/assets/demo.webm"
+Set FontSize 16
+Set Width 1400
+Set Height 800
 Set Theme "Catppuccin Mocha"
-Set TypingSpeed 40ms
-Set Padding 20
+Set TypingSpeed 25ms
+Set Padding 15
+Set Framerate 24
 
-# Title
-Type "# Runqy — Task Queue in 60 seconds"
-Enter
-Sleep 1s
-
-# Step 1: Start the stack
-Type "# 1. Start the stack"
+# Load mock commands
+Hide
+Type "source /tmp/demo-bashrc.sh"
 Enter
 Sleep 500ms
-Type "docker-compose -f docker-compose.quickstart.yml up -d"
+Type "clear"
 Enter
-Sleep 5s
-
-# Step 2: Check services are running
-Type "# 2. Stack is ready ✓"
-Enter
+Show
 Sleep 500ms
-Type "docker-compose -f docker-compose.quickstart.yml ps --format 'table {{.Service}}\t{{.Status}}'"
-Enter
-Sleep 3s
 
-# Step 3: Show the queue config
-Type "# 3. Queue defined in YAML — zero-touch deployment from Git"
+# Scene 1: Start server
+Type "runqy serve"
 Enter
-Sleep 500ms
-Type "cat examples/quickstart.yaml | head -20"
-Enter
-Sleep 3s
+Sleep 4s
 
-# Step 4: Enqueue a task via REST API
-Type "# 4. Enqueue a task"
+# Clear for worker
+Hide
+Type "clear"
 Enter
+Show
 Sleep 500ms
-Type@50ms 'curl -s -X POST http://localhost:3000/enqueue \' 
-Enter
-Type@50ms '  -H "Content-Type: application/json" \'
-Enter
-Type@50ms '  -H "Authorization: Bearer dev-api-key" \'
-Enter
-Type@50ms '  -d '"'"'{"queue":"quickstart-oneshot","data":{"operation":"uppercase","data":"hello runqy"}}'"'"' | jq .'
-Enter
-Sleep 3s
 
-# Step 5: Enqueue with Python SDK
-Type "# 5. Or use the Python SDK"
+# Scene 2: Start worker
+Type "runqy-worker --server http://localhost:3000"
 Enter
-Sleep 500ms
-Type "python3 -c \""
-Enter
-Type "from runqy_python import Client"
-Enter
-Type "client = Client('http://localhost:3000', api_key='dev-api-key')"
-Enter
-Type "task = client.enqueue('quickstart-longrunning', {'operation': 'double', 'data': 42})"
-Enter
-Type "print(f'Task {task.id} enqueued!')"
-Enter
-Type "\""
-Enter
-Sleep 3s
+Sleep 4s
 
-# Step 6: Check results
-Type "# 6. Monitor at http://localhost:3000/monitoring/"
+# Clear for CLI
+Hide
+Type "clear"
 Enter
+Show
 Sleep 500ms
-Type "curl -s http://localhost:3000/workers -H 'Authorization: Bearer dev-api-key' | jq '.[] | {queue, status}'"
+
+# Scene 3: Enqueue via CLI
+Type `runqy task enqueue -q quickstart-oneshot -p '{"operation":"uppercase","data":"hello runqy"}'`
+Enter
+Sleep 2.5s
+
+# Scene 4: REST API
+Type `curl -s POST localhost:3000/queue/add -d '{"queue":"quickstart-oneshot","data":{"msg":"via REST"}}' | jq .`
+Enter
+Sleep 2.5s
+
+# Scene 5: Python SDK
+Type `python3 -c "from runqy_python import RunqyClient; c = RunqyClient('http://localhost:3000'); t = c.enqueue('quickstart-longrunning', {'data': 42}); print(f'Enqueued: {t.task_id}')"`
+Enter
+Sleep 2.5s
+
+# Scene 6: Monitor
+Type "runqy queue list"
 Enter
 Sleep 3s
 
 # Closing
 Type ""
 Enter
-Type "# Your workers, your machines, your rules. 🚀"
-Enter
-Type "# → github.com/Publikey/runqy"
+Type `echo "🚀 Your workers, your machines, your rules. — github.com/Publikey/runqy"`
 Enter
 Sleep 3s

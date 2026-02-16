@@ -26,7 +26,11 @@
 ---
 
 <p align="center">
-  <img src="assets/demo.gif" alt="Runqy demo" width="800">
+  <video src="assets/demo.webm" alt="Runqy demo" width="800" autoplay loop muted></video>
+</p>
+
+<p align="center">
+  <img src="assets/monitoring.png" alt="Runqy monitoring dashboard" width="800">
 </p>
 
 ---
@@ -54,10 +58,10 @@ docker-compose -f docker-compose.quickstart.yml up -d
 # 2. Enqueue a task
 pip install runqy-python
 python -c "
-import runqy
-client = runqy.Client('http://localhost:3000')
+from runqy_python import RunqyClient
+client = RunqyClient('http://localhost:3000', api_key='dev-api-key')
 task = client.enqueue('quickstart-oneshot', {'message': 'Hello World!'})
-print(f'Task ID: {task.id}')
+print(f'Task ID: {task.task_id}')
 "
 
 # 3. Check results
