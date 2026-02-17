@@ -1,165 +1,122 @@
-# Star Runqy - Vault Secrets Tutorial
+# Star Runqy — Vault Secrets Tutorial
 
-This example demonstrates how to use Runqy's built-in vault to securely manage secrets and environment variables in your tasks. We'll create a task that stars the Publikey/runqy repository using a GitHub personal access token stored in the vault.
+A hands-on example showing how to use Runqy's built-in vault for secret management. The task stars the [Publikey/runqy](https://github.com/Publikey/runqy) repository using a GitHub token stored securely in the vault.
 
-## 🎯 What You'll Learn
+## Prerequisites
 
-- How to configure secrets in Runqy's vault
-- How to reference vault secrets in your YAML deployment
-- How to access environment variables in your tasks
-- Best practices for handling sensitive data
+- Runqy server running with vault enabled
+- A GitHub Personal Access Token with `public_repo` scope
 
-## 🔐 Step 1: Configure the Vault with Your GitHub Token
+### Enable the Vault
 
-First, you'll need a GitHub Personal Access Token (PAT) with `public_repo` permissions:
-
-1. Go to [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)
-2. Click "Generate new token (classic)"
-3. Give it a descriptive name like "Runqy Star Example"
-4. Select the `public_repo` scope (to star repositories)
-5. Click "Generate token" and copy the token
-
-Now store it in Runqy's vault:
+The vault requires a 32-byte AES-256 master key, base64-encoded:
 
 ```bash
-# Add your GitHub token to the vault
-runqy vault set GITHUB_TOKEN ghp_your_token_here
-
-# Verify it was stored
-runqy vault list
+# Generate a master key
+openssl rand -base64 32
 ```
 
-## 📄 Step 2: YAML Configuration with env_vars
-
-The magic happens in the YAML deployment configuration. Notice how we reference the vault secret:
+Set `RUNQY_VAULT_MASTER_KEY` in your server environment (e.g. in `docker-compose.yml`):
 
 ```yaml
-name: star-runqy
-runtime: python
-git_url: https://github.com/Publikey/runqy
-git_path: examples/star-runqy
-env_vars:
-  GITHUB_TOKEN: "{{ vault.GITHUB_TOKEN }}"  # 🔐 Vault reference
+environment:
+  RUNQY_VAULT_MASTER_KEY: "your-base64-key-here"
 ```
 
-Key points:
+When configured correctly, the server startup banner shows `Vaults: enabled`.
 
-- **`env_vars`** section defines environment variables for the worker
-- **`{{ vault.GITHUB_TOKEN }}`** references the secret stored in the vault
-- The worker receives the actual token value, not the vault reference
-- Secrets are injected securely at runtime
+## Step 1: Create a Vault and Store Your Token
 
-## 🚀 Step 3: Deploy and Run the Task
+```bash
+# Create a vault for GitHub credentials
+runqy vault create github -d "GitHub API tokens"
 
-1. **Start your Runqy server** (if not already running):
-   ```bash
-   runqy server start
-   ```
+# Store your token
+runqy vault set github GITHUB_TOKEN ghp_your_token_here
 
-2. **Deploy the worker**:
-   ```bash
-   # Copy the YAML to your deployment directory
-   cp examples/star-runqy.yaml deployment/
-   
-   # Or add it to examples.yaml and restart
-   runqy reload
-   ```
+# Verify
+runqy vault entries github
+```
 
-3. **Enqueue the task**:
-   ```bash
-   runqy task enqueue -q star-runqy -t star_runqy
-   ```
+## Step 2: Deploy the Queue
 
-4. **Watch the magic happen**:
-   ```bash
-   # Check task status
-   runqy task list -q star-runqy
-   
-   # View results in the monitoring dashboard
-   open http://localhost:3000/monitoring/
-   ```
+The queue configuration references the vault by name. All entries in the vault are injected as environment variables into the worker:
 
-## 🌀 Expected Result
+```yaml
+# examples.yaml
+queues:
+  star-runqy:
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      code_path: "examples/star-runqy"
+      startup_cmd: "python main.py"
+      mode: "one_shot"
+      vaults: ["github"]  # Injects all entries as env vars
+```
 
-When the task completes successfully, you should see:
+The worker receives `GITHUB_TOKEN` as an environment variable — no secrets in your code or config files.
+
+Copy `examples.yaml` to your queue workers directory, or use `runqy config create`:
+
+```bash
+runqy config create -f examples/star-runqy/examples.yaml
+```
+
+## Step 3: Run the Task
+
+```bash
+# Enqueue
+runqy task enqueue -q star-runqy
+
+# Check result
+runqy task list -q star-runqy
+```
+
+### Expected Output
 
 ```json
 {
   "success": true,
-  "already_starred": false,
   "message": "🌟 Successfully starred Publikey/runqy! Thank you for the support!",
-  "emoji_message": "You just starred Runqy from a Runqy task! 🌀",
-  "repo_url": "https://github.com/Publikey/runqy"
+  "emoji_message": "You just starred Runqy from a Runqy task! 🌀"
 }
 ```
 
-**You just starred Runqy from a Runqy task! 🌀**
+## How It Works
 
-## 🔒 Vault Security Features
+1. **`runqy vault set github GITHUB_TOKEN ghp_...`** — encrypts and stores the token (AES-256)
+2. **`vaults: ["github"]`** in the queue config — tells the server which vaults to resolve
+3. When the worker registers, the server decrypts vault entries and sends them as env vars
+4. The Python task reads `os.getenv('GITHUB_TOKEN')` — no vault SDK needed
 
-Runqy's vault provides several security benefits:
+## Vault CLI Reference
 
-- **Encrypted storage**: Secrets are encrypted at rest
-- **Access control**: Only authorized workers can access specific secrets
-- **Audit logging**: Track secret usage and access patterns
-- **Environment isolation**: Secrets are injected only when needed
-- **No code exposure**: Tokens never appear in your source code
-
-## 🛠️ Troubleshooting
-
-### "GITHUB_TOKEN not found in environment"
-
-This means the vault secret isn't being injected. Check:
-
-1. **Vault secret exists**: `runqy vault list`
-2. **YAML syntax**: Ensure `{{ vault.GITHUB_TOKEN }}` is quoted
-3. **Deployment reload**: Run `runqy reload` after YAML changes
-4. **Worker restart**: Stop and restart the worker if needed
-
-### "Failed to star repository: 401"
-
-The GitHub token is invalid or expired:
-
-1. **Regenerate token**: Create a new PAT on GitHub
-2. **Update vault**: `runqy vault set GITHUB_TOKEN new_token`
-3. **Check permissions**: Ensure the token has `public_repo` scope
-
-### "Failed to star repository: 403"
-
-Rate limiting or insufficient permissions:
-
-1. **Check rate limits**: GitHub API has rate limits
-2. **Verify scope**: Token needs `public_repo` or `repo` scope
-3. **Repository access**: Ensure the token can access public repositories
-
-## 🎓 Advanced Vault Usage
-
-This example shows basic vault usage. For production workloads, consider:
-
-```yaml
-env_vars:
-  # Database credentials
-  DB_PASSWORD: "{{ vault.POSTGRES_PASSWORD }}"
-  DB_USER: "{{ vault.POSTGRES_USER }}"
-  
-  # API keys
-  OPENAI_API_KEY: "{{ vault.OPENAI_KEY }}"
-  STRIPE_SECRET: "{{ vault.STRIPE_SECRET }}"
-  
-  # AWS credentials
-  AWS_ACCESS_KEY_ID: "{{ vault.AWS_ACCESS_KEY }}"
-  AWS_SECRET_ACCESS_KEY: "{{ vault.AWS_SECRET_KEY }}"
+```bash
+runqy vault create <name> [-d "description"]   # Create a vault
+runqy vault set <name> <key> <value>            # Add/update an entry
+runqy vault get <name> <key>                    # Read an entry
+runqy vault entries <name>                      # List all entries
+runqy vault list                                # List all vaults
+runqy vault unset <name> <key>                  # Remove an entry
+runqy vault delete <name> --force               # Delete a vault
 ```
 
-## 📚 Next Steps
+## Private Git Repos
 
-- **Explore other examples**: Check out the image classifier and data pipeline examples
-- **Production deployment**: Learn about scaling and monitoring in the docs
-- **Custom workers**: Build your own GPU-accelerated ML tasks
-- **Integration**: Connect Runqy to your existing infrastructure
+You can also use the vault for git authentication with `git_token`:
 
----
+```yaml
+deployment:
+  git_url: "https://github.com/your-org/private-repo.git"
+  git_token: "vault://github/GIT_TOKEN"  # vault://vault-name/key
+  vaults: ["secrets"]
+```
 
-**Pro tip**: The vault supports hierarchical keys like `vault.prod.database.password` for organizing secrets by environment and service.
+## Troubleshooting
 
-Ready to build something awesome? The vault has your back! 🔐✨
+| Problem | Fix |
+|---------|-----|
+| `Vaults: disabled` in server banner | Set `RUNQY_VAULT_MASTER_KEY` (must be base64-encoded, 32 bytes) |
+| `GITHUB_TOKEN not found` | Check vault entry exists: `runqy vault entries github` |
+| `401` from GitHub API | Regenerate PAT, update with `runqy vault set github GITHUB_TOKEN <new>` |
+| `vaults not configured` | Server needs restart after setting `RUNQY_VAULT_MASTER_KEY` |
