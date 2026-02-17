@@ -35,8 +35,8 @@
 
 🌍 **Workers run anywhere** — Your laptop, on-prem servers, AWS, Azure, Runpod, any machine with an internet connection. [Learn more →](https://docs.runqy.com/worker/)  
 🚀 **Zero-touch deployment** — Workers pull code from Git, install dependencies, and start processing automatically. No manual setup. [Learn more →](https://docs.runqy.com/worker/deployment/)  
-📄 **Simple YAML config** — Define a queue in a few lines. One YAML file, one queue. [Learn more →](https://docs.runqy.com/server/configuration/)  
-🔐 **Built-in secrets** — Pass secrets to workers via encrypted env vars. [Learn more →](https://docs.runqy.com/server/configuration/)  
+📄 **Simple YAML config** — Define a queue in a few lines. One YAML file, one queue. [Learn more →](https://docs.runqy.com/server/configuration/#queue-worker-definitions-yaml)  
+🔐 **Built-in secrets** — Pass secrets to workers via encrypted env vars. [Learn more →](https://docs.runqy.com/server/configuration/#configuration-methods)  
 🐍 **Go server + Python SDK** — Robust Go server, familiar Python developer experience. [Learn more →](https://docs.runqy.com/python-sdk/)  
 📊 **Web monitoring UI** — Real-time dashboard with Prometheus metrics. [Learn more →](https://docs.runqy.com/guides/monitoring/)  
 
@@ -99,7 +99,7 @@ Deploy it:
 runqy config create -f queue.yaml
 ```
 
-See the [Queue Configuration Reference](https://docs.runqy.com/server/configuration/) for all options.
+See the [Queue Configuration Reference](https://docs.runqy.com/server/configuration/#queue-worker-definitions-yaml) for all options.
 
 ## Write a Task
 
@@ -202,7 +202,7 @@ export REDIS_HOST=localhost:6379
 export RUNQY_API_KEY=your-secret-key
 ```
 
-See the [Configuration Reference](https://docs.runqy.com/server/configuration/) for all options.
+See the [Configuration Reference](https://docs.runqy.com/server/configuration/?h=redis_host#1-environment-variables-envsecret-file) for all options.
 
 ## CLI Reference
 
