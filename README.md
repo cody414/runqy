@@ -36,9 +36,20 @@
 🌍 **Workers run anywhere** — Your laptop, on-prem servers, AWS, Azure, Runpod, any machine with an internet connection. [Learn more →](https://docs.runqy.com/workers/)  
 🚀 **Zero-touch deployment** — Workers pull code from Git, install dependencies, and start processing automatically. No manual setup. [Learn more →](https://docs.runqy.com/deployment/)  
 📄 **Simple YAML config** — Define a queue in a few lines. One YAML file, one queue. [Learn more →](https://docs.runqy.com/queues/)  
-🔐 **Built-in secrets** — Pass secrets to workers via encrypted env vars. Active when an API key is set. [Learn more →](https://docs.runqy.com/secrets/)  
+🔐 **Built-in secrets** — Pass secrets to workers via encrypted env vars. [Learn more →](https://docs.runqy.com/secrets/)  
 🐍 **Go server + Python SDK** — Robust Go server, familiar Python developer experience. [Learn more →](https://docs.runqy.com/sdk/python/)  
 📊 **Web monitoring UI** — Real-time dashboard with Prometheus metrics. [Learn more →](https://docs.runqy.com/monitoring/)  
+
+### Feature Comparison
+
+| Feature | Runqy | Celery | Temporal | Modal | BullMQ | Inngest |
+|---------|-------|--------|----------|-------|--------|---------|
+| **Self-hosted** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| **Workers anywhere** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Auto-deploy from Git** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Deployment YAML** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Built-in secrets** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Monitoring UI** | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -179,18 +190,15 @@ See the [Installation Guide](https://docs.runqy.com/installation/) for detailed 
 
 ## Requirements
 
-- **Development:** Built-in SQLite (zero setup)
-- **Production:** Redis + PostgreSQL
+- Redis + PostgreSQL
 
-## Configuration
+## Server Configuration
 
-Configure via environment variables:
+Configure the server via environment variables:
 
 ```bash
-# Core settings
 export REDIS_HOST=localhost:6379
 export RUNQY_API_KEY=your-secret-key
-export QUEUE_WORKERS_DIR=./deployment
 ```
 
 See the [Configuration Reference](https://docs.runqy.com/server/configuration/) for all options.
