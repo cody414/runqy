@@ -25,9 +25,6 @@ Sleep 1.5s
 Type "runqy serve"
 Enter
 Sleep 4s
-
-# Transition (no extra wait for first one)
-Sleep 2s
 Hide
 Type "clear"
 Enter
@@ -75,7 +72,7 @@ Show
 Sleep 500ms
 
 # ── Scene 4: Start a worker ──
-Type "# Start a worker — can run anywhere (local, VM, Docker)"
+Type "# Start a worker — runs anywhere: laptop, on-prem, AWS, Azure, Runpod..."
 Enter
 Sleep 1s
 Type "# Python code is deployed and executed automatically on the worker"
