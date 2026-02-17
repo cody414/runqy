@@ -26,7 +26,7 @@
 ---
 
 <p align="center">
-  <video src="assets/demo.webm" alt="Runqy demo" width="800" autoplay loop muted></video>
+  <img src="assets/demo.gif" alt="Runqy demo — from zero to task result in 90 seconds" width="800">
 </p>
 
 <p align="center">
