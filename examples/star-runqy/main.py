@@ -10,7 +10,7 @@ The GitHub token is provided via environment variable from the vault.
 
 import os
 import requests
-from runqy import task
+from runqy_python import task
 
 
 @task
