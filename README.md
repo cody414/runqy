@@ -5,7 +5,7 @@
 <h1 align="center">runqy</h1>
 
 <p align="center">
-  <strong>Open-source GPU-native task queue for AI workloads. The Modal alternative you can self-host.</strong>
+  <strong>Open-source task queue for AI workloads. Deploy workers anywhere, from your laptop to the cloud.</strong>
 </p>
 
 <p align="center">
@@ -29,20 +29,16 @@
   <img src="assets/demo.gif" alt="Runqy demo — from zero to task result in 90 seconds" width="800">
 </p>
 
-<p align="center">
-  <img src="assets/monitoring.png" alt="Runqy monitoring dashboard" width="800">
-</p>
-
 ---
 
 ## Why Runqy?
 
-🎯 **GPU-native workers** — First-class GPU support for ML/AI workloads  
-📄 **Deployment YAML** — Zero-touch worker deployment from Git  
-🗄️ **Multi-backend** — Redis, PostgreSQL, or SQLite backend storage  
-🔐 **Built-in vault** — Secure secrets management with env_vars  
-🐍 **Go server + Python SDK** — Robust server, familiar developer experience  
-📊 **Web monitoring UI** — Real-time dashboard with Prometheus metrics  
+🌍 **Workers run anywhere** — Your laptop, on-prem servers, AWS, Azure, Runpod, any machine with an internet connection. [Learn more →](https://docs.runqy.com/workers/)  
+🚀 **Zero-touch deployment** — Workers pull code from Git, install dependencies, and start processing automatically. No manual setup. [Learn more →](https://docs.runqy.com/deployment/)  
+📄 **Simple YAML config** — Define a queue in a few lines. One YAML file, one queue. [Learn more →](https://docs.runqy.com/queues/)  
+🔐 **Built-in secrets** — Pass secrets to workers via encrypted env vars. Active when an API key is set. [Learn more →](https://docs.runqy.com/secrets/)  
+🐍 **Go server + Python SDK** — Robust Go server, familiar Python developer experience. [Learn more →](https://docs.runqy.com/sdk/python/)  
+📊 **Web monitoring UI** — Real-time dashboard with Prometheus metrics. [Learn more →](https://docs.runqy.com/monitoring/)  
 
 ---
 
@@ -68,9 +64,33 @@ print(f'Task ID: {task.task_id}')
 open http://localhost:3000/monitoring/
 ```
 
-## Code Example
+See the [Quickstart Guide](https://docs.runqy.com/quickstart/) for the full walkthrough.
 
-Write tasks with simple decorators:
+## Define a Queue
+
+A queue is a simple YAML file:
+
+```yaml
+queues:
+  image-resize:
+    priority: 5
+    deployment:
+      # Worker code: https://github.com/acme/image-worker
+      git_url: "https://github.com/acme/image-worker.git"
+      branch: "main"
+      startup_cmd: "python main.py"
+      mode: "one_shot"
+```
+
+Deploy it:
+
+```bash
+runqy config create -f queue.yaml
+```
+
+See the [Queue Configuration Reference](https://docs.runqy.com/queues/configuration/) for all options.
+
+## Write a Task
 
 ```python
 from runqy import task, load
@@ -83,34 +103,33 @@ def setup():
 
 @task
 def process_image(image_url: str, model) -> dict:
-    """Process on every task execution"""
-    # GPU-accelerated inference
+    """Runs on every task execution"""
     result = model.predict(image_url)
     return {"prediction": result, "confidence": 0.95}
 ```
 
-Deploy with YAML:
+See the [Python SDK Reference](https://docs.runqy.com/sdk/python/) for the full API.
 
-```yaml
-# deployment/image-processor.yaml
-name: image-processor
-runtime: python
-git_url: https://github.com/your-org/ml-tasks
-env_vars:
-  MODEL_PATH: /models/resnet50.pt
-  GPU_MEMORY: "8GB"
+## Enqueue Tasks
+
+Three ways to enqueue:
+
+```bash
+# CLI
+runqy task enqueue -q image-resize -p '{"image":"img001.jpg","size":256}'
+
+# REST API
+curl -s POST localhost:3000/queue/add \
+  -H "X-API-Key: dev-api-key" \
+  -d '{"queue":"image-resize","data":{"image":"img002.jpg"}}'
+
+# Python SDK
+from runqy_python import RunqyClient
+client = RunqyClient('http://localhost:3000', api_key='dev-api-key')
+task = client.enqueue('image-resize', {'image': 'img003.jpg'})
 ```
 
-## Feature Comparison
-
-| Feature | Runqy | Celery | Temporal | Modal | BullMQ | Inngest |
-|---------|-------|--------|----------|-------|--------|---------|
-| **GPU Support** | ✅ Native | ❌ | ❌ | ✅ | ❌ | ❌ |
-| **Self-hosted** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| **Deployment YAML** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| **Vault Secrets** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| **Multi-backend** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Monitoring UI** | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
+See the [API Reference](https://docs.runqy.com/api/) for all endpoints.
 
 ---
 
@@ -119,8 +138,8 @@ env_vars:
 Explore real-world use cases:
 
 - **[quickstart-oneshot](examples/quickstart-oneshot/)** — Simple task execution
-- **[quickstart-longrunning](examples/quickstart-longrunning/)** — Background processes  
-- **[star-runqy](examples/star-runqy/)** — Vault secrets tutorial
+- **[quickstart-longrunning](examples/quickstart-longrunning/)** — Long-running worker processes  
+- **[star-runqy](examples/star-runqy/)** — Secrets management tutorial
 - **image-classifier** — GPU-accelerated ML inference *(coming soon)*
 - **data-pipeline** — Multi-step data processing *(coming soon)*
 - **model-training** — Distributed training jobs *(coming soon)*
@@ -156,6 +175,8 @@ cd runqy
 go build -o runqy ./app
 ```
 
+See the [Installation Guide](https://docs.runqy.com/installation/) for detailed instructions.
+
 ## Requirements
 
 - **Development:** Built-in SQLite (zero setup)
@@ -163,20 +184,16 @@ go build -o runqy ./app
 
 ## Configuration
 
-Configure via environment variables or YAML:
+Configure via environment variables:
 
 ```bash
 # Core settings
 export REDIS_HOST=localhost:6379
 export RUNQY_API_KEY=your-secret-key
 export QUEUE_WORKERS_DIR=./deployment
-
-# Optional
-export PROMETHEUS_ADDRESS=http://localhost:9090
-export VAULT_ENABLED=true
 ```
 
-See [Configuration Reference](https://docs.runqy.com/server/configuration/) for all options.
+See the [Configuration Reference](https://docs.runqy.com/server/configuration/) for all options.
 
 ## CLI Reference
 
@@ -184,17 +201,16 @@ Manage your deployment locally or remotely:
 
 ```bash
 runqy queue list                    # List all queues
-runqy queue create -f config.yaml  # Deploy queue worker
+runqy config create -f queue.yaml   # Deploy a queue
 
 runqy task enqueue -q myqueue -p '{"key":"value"}'  # Enqueue task
-runqy task list -q myqueue                          # List tasks
+runqy task list myqueue                              # List tasks
+runqy task get myqueue <task_id>                     # Get task result
 
 runqy worker list                   # List active workers
-runqy worker logs -w worker-123     # Stream worker logs
-
-runqy vault set SECRET_KEY value    # Store secrets
-runqy vault list                    # List vault keys
 ```
+
+See the [CLI Reference](https://docs.runqy.com/cli/) for all commands.
 
 ## Monitoring
 
@@ -205,7 +221,7 @@ Access the web dashboard at `/monitoring` for real-time insights:
 - Worker health and logs
 - Resource utilization
 
-For advanced monitoring, Runqy exposes Prometheus metrics at `/metrics`. See the [Monitoring Guide](https://docs.runqy.com/guides/monitoring/) for Grafana dashboards and alerting.
+Runqy exposes Prometheus metrics at `/metrics`. See the [Monitoring Guide](https://docs.runqy.com/monitoring/) for Grafana dashboards and alerting.
 
 ## Architecture
 
@@ -215,7 +231,7 @@ Tasks flow from clients → runqy server → queues → workers running anywhere
   <img src="assets/architecture.png" alt="runqy architecture" width="700">
 </p>
 
-**Zero-touch Deployment:** Workers connect, pull your code, install dependencies, and start processing—no manual setup required.
+**Zero-touch Deployment:** Workers connect to the server, pull your code from Git, install dependencies, and start processing — no manual setup required.
 
 <p align="center">
   <img src="assets/code_pull.png" alt="zero-touch deployment" width="700">
