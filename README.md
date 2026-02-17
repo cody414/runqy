@@ -13,7 +13,7 @@
   <a href="https://github.com/Publikey/runqy/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Publikey/runqy" alt="License"></a>
   <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go" alt="Go Version"></a>
   <a href="https://github.com/Publikey/runqy-python"><img src="https://img.shields.io/badge/Python_SDK-Available-3776AB?style=flat&logo=python" alt="Python SDK"></a>
-  <a href="https://github.com/Publikey/runqy/actions"><img src="https://img.shields.io/github/actions/workflow/status/Publikey/runqy/ci.yml?branch=main" alt="Build Status"></a>
+  <a href="https://github.com/Publikey/runqy/actions"><img src="https://img.shields.io/github/actions/workflow/status/Publikey/runqy/release.yml" alt="Build Status"></a>
 </p>
 
 <p align="center">
