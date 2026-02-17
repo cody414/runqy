@@ -5,7 +5,7 @@ This example demonstrates GPU-native task processing:
 - @task processes inference requests without restarting
 - Long-running mode keeps the model in VRAM between tasks
 
-Requirements: NVIDIA GPU with 8GB+ VRAM
+Requirements: NVIDIA GPU with 4GB+ VRAM
 """
 
 import sys
@@ -23,7 +23,7 @@ def setup():
     import torch
 
     pipe = StableDiffusionPipeline.from_pretrained(
-        "stabilityai/stable-diffusion-2-1",
+        "stable-diffusion-v1-5/stable-diffusion-v1-5",
         torch_dtype=torch.float16,
     ).to("cuda")
 

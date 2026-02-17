@@ -6,7 +6,7 @@
 queues:
   # ── GPU Inference ──────────────────────────────────────
   # Stable Diffusion image generation on GPU workers.
-  # Requires: NVIDIA GPU with 8GB+ VRAM
+  # Requires: NVIDIA GPU with 4GB+ VRAM
   gpu-inference:
     priority: 10
     deployment:
