@@ -1,0 +1,21 @@
+#!/bin/bash
+echo ""
+cat << 'EOF'
+  ______   __  __   __   __   ______   __  __
+ /\  == \ /\ \/\ \ /\ "-.\ \ /\  __ \ /\ \_\ \
+ \ \  __< \ \ \_\ \\ \ \-.  \\ \ \/\_\\ \____ \
+  \ \_\ \_\\ \_____\\ \_\\"\_\\ \___\_\\/\_____\
+   \/_/ /_/ \/_____/ \/_/ \/_/ \/___/_/ \/_____/  v0.2.6
+
+  Server: http://localhost:3000
+
+  Database     PostgreSQL (runqy)
+  Redis        localhost:6379 [connected]
+  Queues       0
+  Vaults       disabled
+  Monitoring   /monitoring
+  Metrics      /metrics
+  Swagger      /swagger
+
+  Docs: https://docs.runqy.com
+EOF
