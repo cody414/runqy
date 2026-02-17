@@ -20,7 +20,7 @@
   <a href="https://docs.runqy.com"><strong>Documentation</strong></a> · 
   <a href="https://runqy.com"><strong>Website</strong></a> · 
   <a href="#examples">Examples</a> · 
-  <a href="#contributing">Contributing</a>
+  <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
 ---
