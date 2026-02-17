@@ -223,14 +223,30 @@ See the [CLI Reference](https://docs.runqy.com/server/cli/) for all commands.
 
 ## Monitoring
 
-Access the web dashboard at `/monitoring` for real-time insights:
+Access the built-in web dashboard at `/monitoring`:
 
-- Queue status and throughput
-- Task execution history  
-- Worker health and logs
-- Resource utilization
+<p align="center">
+  <img src="docs/images/monitoring-dashboard.png" alt="Runqy Dashboard" width="700">
+</p>
 
-Runqy exposes Prometheus metrics at `/metrics`. See the [Monitoring Guide](https://docs.runqy.com/guides/monitoring/) for Grafana dashboards and alerting.
+<details>
+<summary>📊 More screenshots</summary>
+
+**Queue Overview** — Status, pending/active/completed counts, latency per queue:
+
+<p align="center">
+  <img src="docs/images/monitoring-queues.png" alt="Runqy Queues" width="700">
+</p>
+
+**Workers** — CPU/RAM usage, assigned queues, heartbeat status:
+
+<p align="center">
+  <img src="docs/images/monitoring-workers.png" alt="Runqy Workers" width="700">
+</p>
+
+</details>
+
+Runqy also exposes Prometheus metrics at `/metrics`. See the [Monitoring Guide](https://docs.runqy.com/guides/monitoring/) for Grafana dashboards and alerting.
 
 ## Architecture
 
