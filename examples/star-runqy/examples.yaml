@@ -1,0 +1,28 @@
+queues:
+  # Star Runqy - Vault Secrets Tutorial
+  # Stars the Publikey/runqy repo using a GitHub token from the vault
+  star-runqy:
+    priority: 5
+    deployment:
+      git_url: "https://github.com/Publikey/runqy.git"
+      branch: "main"
+      code_path: "examples/star-runqy"
+      startup_cmd: "python main.py"
+      mode: "one_shot"
+      vaults: ["github"]  # All entries from the "github" vault are injected as env vars
+      startup_timeout_secs: 30
+      redis_storage: true
+    input: []
+    output:
+      - name: "success"
+        type:
+          - "bool"
+      - name: "message"
+        type:
+          - "string"
+      - name: "emoji_message"
+        type:
+          - "string"
+      - name: "error"
+        type:
+          - "string"
