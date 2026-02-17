@@ -10,7 +10,7 @@ The GitHub token is provided via environment variable from the vault.
 
 import os
 import requests
-from runqy_python import task
+from runqy_python import task, run_once
 
 
 @task
@@ -91,11 +91,4 @@ def star_runqy() -> dict:
 
 
 if __name__ == "__main__":
-    # For local testing (when token is in environment)
-    result = star_runqy()
-    print("🌀 Star Runqy Result:")
-    print(f"Success: {result.get('success')}")
-    print(f"Message: {result.get('message', result.get('emoji_message', 'No message'))}")
-    
-    if 'error' in result:
-        print(f"Error: {result['error']}")
+    run_once()
