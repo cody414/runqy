@@ -33,12 +33,12 @@
 
 ## Why Runqy?
 
-🌍 **Workers run anywhere** — Your laptop, on-prem servers, AWS, Azure, Runpod, any machine with an internet connection. [Learn more →](https://docs.runqy.com/workers/)  
-🚀 **Zero-touch deployment** — Workers pull code from Git, install dependencies, and start processing automatically. No manual setup. [Learn more →](https://docs.runqy.com/deployment/)  
-📄 **Simple YAML config** — Define a queue in a few lines. One YAML file, one queue. [Learn more →](https://docs.runqy.com/queues/)  
-🔐 **Built-in secrets** — Pass secrets to workers via encrypted env vars. [Learn more →](https://docs.runqy.com/secrets/)  
-🐍 **Go server + Python SDK** — Robust Go server, familiar Python developer experience. [Learn more →](https://docs.runqy.com/sdk/python/)  
-📊 **Web monitoring UI** — Real-time dashboard with Prometheus metrics. [Learn more →](https://docs.runqy.com/monitoring/)  
+🌍 **Workers run anywhere** — Your laptop, on-prem servers, AWS, Azure, Runpod, any machine with an internet connection. [Learn more →](https://docs.runqy.com/worker/)  
+🚀 **Zero-touch deployment** — Workers pull code from Git, install dependencies, and start processing automatically. No manual setup. [Learn more →](https://docs.runqy.com/worker/deployment/)  
+📄 **Simple YAML config** — Define a queue in a few lines. One YAML file, one queue. [Learn more →](https://docs.runqy.com/server/configuration/)  
+🔐 **Built-in secrets** — Pass secrets to workers via encrypted env vars. [Learn more →](https://docs.runqy.com/server/configuration/)  
+🐍 **Go server + Python SDK** — Robust Go server, familiar Python developer experience. [Learn more →](https://docs.runqy.com/python-sdk/)  
+📊 **Web monitoring UI** — Real-time dashboard with Prometheus metrics. [Learn more →](https://docs.runqy.com/guides/monitoring/)  
 
 ### Feature Comparison
 
@@ -75,7 +75,7 @@ print(f'Task ID: {task.task_id}')
 open http://localhost:3000/monitoring/
 ```
 
-See the [Quickstart Guide](https://docs.runqy.com/quickstart/) for the full walkthrough.
+See the [Quickstart Guide](https://docs.runqy.com/getting-started/quickstart/) for the full walkthrough.
 
 ## Define a Queue
 
@@ -99,7 +99,7 @@ Deploy it:
 runqy config create -f queue.yaml
 ```
 
-See the [Queue Configuration Reference](https://docs.runqy.com/queues/configuration/) for all options.
+See the [Queue Configuration Reference](https://docs.runqy.com/server/configuration/) for all options.
 
 ## Write a Task
 
@@ -119,7 +119,7 @@ def process_image(image_url: str, model) -> dict:
     return {"prediction": result, "confidence": 0.95}
 ```
 
-See the [Python SDK Reference](https://docs.runqy.com/sdk/python/) for the full API.
+See the [Python SDK Reference](https://docs.runqy.com/python-sdk/) for the full API.
 
 ## Enqueue Tasks
 
@@ -140,7 +140,7 @@ client = RunqyClient('http://localhost:3000', api_key='dev-api-key')
 task = client.enqueue('image-resize', {'image': 'img003.jpg'})
 ```
 
-See the [API Reference](https://docs.runqy.com/api/) for all endpoints.
+See the [API Reference](https://docs.runqy.com/server/api/) for all endpoints.
 
 ---
 
@@ -186,7 +186,7 @@ cd runqy
 go build -o runqy ./app
 ```
 
-See the [Installation Guide](https://docs.runqy.com/installation/) for detailed instructions.
+See the [Installation Guide](https://docs.runqy.com/getting-started/quickstart/) for detailed instructions.
 
 ## Requirements
 
@@ -218,7 +218,7 @@ runqy task get myqueue <task_id>                     # Get task result
 runqy worker list                   # List active workers
 ```
 
-See the [CLI Reference](https://docs.runqy.com/cli/) for all commands.
+See the [CLI Reference](https://docs.runqy.com/server/cli/) for all commands.
 
 ## Monitoring
 
@@ -229,7 +229,7 @@ Access the web dashboard at `/monitoring` for real-time insights:
 - Worker health and logs
 - Resource utilization
 
-Runqy exposes Prometheus metrics at `/metrics`. See the [Monitoring Guide](https://docs.runqy.com/monitoring/) for Grafana dashboards and alerting.
+Runqy exposes Prometheus metrics at `/metrics`. See the [Monitoring Guide](https://docs.runqy.com/guides/monitoring/) for Grafana dashboards and alerting.
 
 ## Architecture
 
