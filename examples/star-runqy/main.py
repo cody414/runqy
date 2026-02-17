@@ -14,7 +14,7 @@ from runqy_python import task, run_once
 
 
 @task
-def star_runqy() -> dict:
+def star_runqy(data: dict) -> dict:
     """
     Star the Publikey/runqy repository using the GitHub API.
     
