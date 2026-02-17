@@ -149,12 +149,13 @@ See the [API Reference](https://docs.runqy.com/server/api/) for all endpoints.
 Explore real-world use cases:
 
 - **[quickstart-oneshot](examples/quickstart-oneshot/)** — Simple task execution
-- **[quickstart-longrunning](examples/quickstart-longrunning/)** — Long-running worker processes  
-- **[star-runqy](examples/star-runqy/)** — Secrets management tutorial
-- **image-classifier** — GPU-accelerated ML inference *(coming soon)*
-- **data-pipeline** — Multi-step data processing *(coming soon)*
-- **model-training** — Distributed training jobs *(coming soon)*
-- **api-scraper** — Rate-limited web scraping *(coming soon)*
+- **[quickstart-longrunning](examples/quickstart-longrunning/)** — Long-running worker processes
+- **[data-pipeline](examples/data-pipeline/)** — Multi-step data processing (API calls, ETL)
+- **[webhook-processor](examples/webhook-processor/)** — Event-driven webhook handling (Stripe, GitHub)
+- **[scheduled-tasks](examples/scheduled-tasks/)** — Cron-like healthchecks, reports, and cleanup
+- **[multi-queue](examples/multi-queue/)** — Priority-based routing (critical, standard, bulk)
+- **[gpu-inference](examples/gpu-inference/)** — GPU-accelerated image generation with Stable Diffusion
+- **[star-runqy](examples/star-runqy/)** — Vault secrets management tutorial
 
 ---
 
