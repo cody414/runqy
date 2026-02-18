@@ -40,7 +40,7 @@ export interface Task {
 	state: TaskState;
 	max_retry: number;
 	retried: number;
-	last_err: string;
+	error_message: string;
 	last_failed_at: string;
 	timeout_seconds: number;
 	deadline: string;
