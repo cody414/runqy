@@ -1,8 +1,8 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -75,9 +75,27 @@ func AddTaskBatch(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFun
 			timeout = 30
 		}
 
-		// Get asynq client and redis client
-		asynqClient := c.Keys["client"].(*asynq.Client)
-		rdb := c.Keys["rdb"].(*redis.Client)
+		// Get asynq client and redis client (safe assertions)
+		asynqClientVal, ok := c.Get("client")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"asynq client not available"}})
+			return
+		}
+		asynqClient, ok := asynqClientVal.(*asynq.Client)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid asynq client type"}})
+			return
+		}
+		rdbVal, ok := c.Get("rdb")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis client not available"}})
+			return
+		}
+		rdb, ok := rdbVal.(*redis.Client)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis client type"}})
+			return
+		}
 
 		// Prepare batch
 		response := BatchTaskResponse{
@@ -86,7 +104,7 @@ func AddTaskBatch(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFun
 		}
 
 		// Use Redis pipeline for batch operations
-		ctx := context.Background()
+		ctx := c.Request.Context()
 		pipe := rdb.Pipeline()
 
 		// Collect task infos for the response
@@ -131,7 +149,9 @@ func AddTaskBatch(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFun
 
 			// Flush pipeline every 100 jobs to prevent memory buildup
 			if (i+1)%100 == 0 {
-				pipe.Exec(ctx)
+				if _, err := pipe.Exec(ctx); err != nil {
+					response.Errors = append(response.Errors, fmt.Sprintf("pipeline flush error at job %d: %v", i+1, err))
+				}
 				pipe = rdb.Pipeline()
 			}
 		}
@@ -139,7 +159,9 @@ func AddTaskBatch(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFun
 		// Execute remaining pipeline commands
 		if len(taskEntries) > 0 {
 			pipe.SAdd(ctx, "asynq:queues", queue)
-			pipe.Exec(ctx)
+			if _, err := pipe.Exec(ctx); err != nil {
+				response.Errors = append(response.Errors, fmt.Sprintf("final pipeline error: %v", err))
+			}
 		}
 
 		c.JSON(http.StatusOK, response)
@@ -177,9 +199,18 @@ func AddTaskBatchDirect(qwConfigDir string, qwStore *queueworker.Store) gin.Hand
 			return
 		}
 
-		// Get redis client
-		rdb := c.Keys["rdb"].(*redis.Client)
-		ctx := context.Background()
+		// Get redis client (safe assertion)
+		rdbVal, ok := c.Get("rdb")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis client not available"}})
+			return
+		}
+		rdb, ok := rdbVal.(*redis.Client)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis client type"}})
+			return
+		}
+		ctx := c.Request.Context()
 
 		response := BatchTaskResponse{
 			TaskIDs: make([]string, 0, len(req.Jobs)),
@@ -220,9 +251,13 @@ func AddTaskBatchDirect(qwConfigDir string, qwStore *queueworker.Store) gin.Hand
 
 		// Bulk LPUSH all tasks
 		if len(taskMsgs) > 0 {
-			rdb.LPush(ctx, pendingKey, taskMsgs...)
+			if err := rdb.LPush(ctx, pendingKey, taskMsgs...).Err(); err != nil {
+				response.Errors = append(response.Errors, fmt.Sprintf("LPUSH error: %v", err))
+			}
 			pipe.SAdd(ctx, "asynq:queues", queue)
-			pipe.Exec(ctx)
+			if _, err := pipe.Exec(ctx); err != nil {
+				response.Errors = append(response.Errors, fmt.Sprintf("pipeline error: %v", err))
+			}
 		}
 
 		c.JSON(http.StatusOK, response)

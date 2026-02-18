@@ -1,6 +1,8 @@
 package api
 
 import (
+	"sync"
+
 	"github.com/Publikey/runqy/config"
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/Publikey/runqy/vaults"
@@ -8,11 +10,16 @@ import (
 	"github.com/hibiken/asynq"
 )
 
-// Global vault store for use by worker handshake
-var globalVaultStore *vaults.Store
+// Global vault store for use by worker handshake (protected by mutex)
+var (
+	globalVaultStore   *vaults.Store
+	globalVaultStoreMu sync.RWMutex
+)
 
 // GetVaultStore returns the global vault store (for use by worker handshake)
 func GetVaultStore() *vaults.Store {
+	globalVaultStoreMu.RLock()
+	defer globalVaultStoreMu.RUnlock()
 	return globalVaultStore
 }
 
@@ -54,7 +61,9 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 
 // SetupVaultsAPI sets up the vaults API routes
 func SetupVaultsAPI(r *gin.Engine, vaultStore *vaults.Store, apiKey string) {
+	globalVaultStoreMu.Lock()
 	globalVaultStore = vaultStore
+	globalVaultStoreMu.Unlock()
 
 	// Vaults API - all routes require API key authentication
 	router_vaults := r.Group("/api/vaults")

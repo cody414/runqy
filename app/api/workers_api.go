@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -47,8 +46,12 @@ func ListWorkers(c *gin.Context) {
 		return
 	}
 
-	redisClient := rdb.(*redis.Client)
-	ctx := context.Background()
+	redisClient, ok := rdb.(*redis.Client)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid Redis client type"})
+		return
+	}
+	ctx := c.Request.Context()
 
 	// Scan for all worker keys matching pattern asynq:workers:*
 	var workerKeys []string
@@ -128,8 +131,12 @@ func GetWorker(c *gin.Context) {
 		return
 	}
 
-	redisClient := rdb.(*redis.Client)
-	ctx := context.Background()
+	redisClient, ok := rdb.(*redis.Client)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid Redis client type"})
+		return
+	}
+	ctx := c.Request.Context()
 
 	workerKey := "asynq:workers:" + workerID
 	data, err := redisClient.HGetAll(ctx, workerKey).Result()

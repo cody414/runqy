@@ -86,19 +86,22 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // New creates a HTTPHandler with the given options.
-func New(opts Options) *HTTPHandler {
+// Returns an error instead of panicking if configuration is invalid.
+func New(opts Options) (*HTTPHandler, error) {
 	if opts.RedisConnOpt == nil {
-		panic("asynqmon.New: RedisConnOpt field is required")
+		return nil, fmt.Errorf("asynqmon.New: RedisConnOpt field is required")
 	}
 	rc, ok := opts.RedisConnOpt.MakeRedisClient().(redis.UniversalClient)
 	if !ok {
-		panic(fmt.Sprintf("asnyqmon.New: unsupported RedisConnOpt type %T", opts.RedisConnOpt))
+		return nil, fmt.Errorf("asynqmon.New: unsupported RedisConnOpt type %T", opts.RedisConnOpt)
 	}
 	i := asynq.NewInspector(opts.RedisConnOpt)
 
 	// Make sure that RootPath starts with a slash if provided.
 	if opts.RootPath != "" && !strings.HasPrefix(opts.RootPath, "/") {
-		panic(fmt.Sprintf("asynqmon.New: RootPath must start with a slash"))
+		rc.Close()
+		i.Close()
+		return nil, fmt.Errorf("asynqmon.New: RootPath must start with a slash")
 	}
 	// Remove tailing slash from RootPath.
 	opts.RootPath = strings.TrimSuffix(opts.RootPath, "/")
@@ -107,7 +110,7 @@ func New(opts Options) *HTTPHandler {
 		router:   muxRouter(opts, rc, i, opts.DB),
 		closers:  []func() error{rc.Close, i.Close},
 		rootPath: opts.RootPath,
-	}
+	}, nil
 }
 
 // Close closes connections to redis.

@@ -33,12 +33,30 @@ import (
 func GetTaskStatus(c *gin.Context) {
 	uuid := c.Param("uuid")
 
-	rdb := c.Keys["rdb"].(*redis.Client)
-	redisOpt := c.Keys["redisOpt"].(asynq.RedisClientOpt)
+	rdb, ok := c.Get("rdb")
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis client not available"}})
+		return
+	}
+	redisClient, ok := rdb.(*redis.Client)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis client type"}})
+		return
+	}
+	redisOptVal, ok := c.Get("redisOpt")
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis options not available"}})
+		return
+	}
+	redisOpt, ok := redisOptVal.(asynq.RedisClientOpt)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis options type"}})
+		return
+	}
 
 	// Look up queue from task hash: asynq:t:{task_id}
 	taskKey := fmt.Sprintf("asynq:t:%s", uuid)
-	queue, err := rdb.HGet(c, taskKey, "queue").Result()
+	queue, err := redisClient.HGet(c, taskKey, "queue").Result()
 	if err == redis.Nil {
 		c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"task not found"}})
 		return
@@ -51,7 +69,7 @@ func GetTaskStatus(c *gin.Context) {
 	inspector := asynq.NewInspector(redisOpt)
 	defer inspector.Close()
 
-	resp, err := waitForResult(context.Background(), inspector, queue, uuid)
+	resp, err := waitForResult(c.Request.Context(), inspector, queue, uuid)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
 		return
@@ -233,8 +251,26 @@ func AddTask(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFunc {
 			}
 		}
 
-		asynqClient := c.Keys["client"].(*asynq.Client)
-		rdb := c.Keys["rdb"].(*redis.Client)
+		asynqClientVal, ok := c.Get("client")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"asynq client not available"}})
+			return
+		}
+		asynqClient, ok := asynqClientVal.(*asynq.Client)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid asynq client type"}})
+			return
+		}
+		rdbVal, ok := c.Get("rdb")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis client not available"}})
+			return
+		}
+		rdb, ok := rdbVal.(*redis.Client)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis client type"}})
+			return
+		}
 
 		info, err := _client.EnqueueGenericTask(asynqClient, rdb, query.Queue, query.Timeout, payloadToSend)
 		if err != nil {

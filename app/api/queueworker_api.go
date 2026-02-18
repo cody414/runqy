@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,6 +14,9 @@ import (
 	"github.com/Publikey/runqy/vaults"
 	"github.com/gin-gonic/gin"
 )
+
+// validQueueName matches alphanumeric, dots, hyphens, underscores only.
+var validQueueName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$`)
 
 // HandshakeRequest is the worker handshake request body
 type HandshakeRequest struct {
@@ -154,6 +158,13 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 			return
 		}
 
+		if !validQueueName.MatchString(req.Queue) {
+			c.JSON(http.StatusBadRequest, HandshakeErrorResponse{
+				Error: "invalid queue name: must be 1-128 chars, alphanumeric with dots, hyphens, underscores",
+			})
+			return
+		}
+
 		queueName := req.Queue
 
 		// Get all sub-queues for this queue (matching "queueName.*" pattern)
@@ -241,13 +252,20 @@ func WorkerHandshake(store *queueworker.Store, cfg *config.Config) gin.HandlerFu
 			if vaultStore != nil && vaultStore.IsEnabled() {
 				data, err := vaultStore.GetMultipleVaultsData(c.Request.Context(), deployment.Vaults)
 				if err != nil {
-					log.Printf("[VAULTS] Warning: failed to resolve vaults for queue %s: %v", queueName, err)
-				} else {
-					vaultData = data
-					log.Printf("[VAULTS] Resolved %d vault entries for queue %s from vaults: %v", len(vaultData), queueName, deployment.Vaults)
+					log.Printf("[VAULTS] Error: failed to resolve vaults for queue %s: %v", queueName, err)
+					c.JSON(http.StatusInternalServerError, HandshakeErrorResponse{
+						Error: fmt.Sprintf("failed to resolve vaults %v: %v", deployment.Vaults, err),
+					})
+					return
 				}
+				vaultData = data
+				log.Printf("[VAULTS] Resolved %d vault entries for queue %s from vaults: %v", len(vaultData), queueName, deployment.Vaults)
 			} else {
-				log.Printf("[VAULTS] Warning: vaults requested for queue %s but vaults feature is disabled", queueName)
+				log.Printf("[VAULTS] Error: vaults requested for queue %s but vaults feature is disabled", queueName)
+				c.JSON(http.StatusInternalServerError, HandshakeErrorResponse{
+					Error: fmt.Sprintf("vaults requested for queue %s but vaults feature is not configured (set RUNQY_VAULT_MASTER_KEY)", queueName),
+				})
+				return
 			}
 		}
 

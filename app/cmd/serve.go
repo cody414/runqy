@@ -263,7 +263,8 @@ func runServe(cmd *cobra.Command, args []string) {
 			log.Println("[AUTH] Monitoring UI authentication enabled")
 		}
 
-		h = monitoring.New(monitoring.Options{
+		var monErr error
+		h, monErr = monitoring.New(monitoring.Options{
 			RootPath:          "/monitoring",
 			RedisConnOpt:      redisAddr.AsynqOpt,
 			ReadOnly:          cfg.ReadOnly,
@@ -274,6 +275,9 @@ func runServe(cmd *cobra.Command, args []string) {
 			PrometheusAddress: cfg.PrometheusAddress,
 			Config:            cfg,
 		})
+		if monErr != nil {
+			log.Fatalf("Failed to initialize monitoring UI: %v", monErr)
+		}
 		defer h.Close()
 	} else if debugMode {
 		log.Println("[UI] Monitoring dashboard disabled (--no-ui)")
@@ -397,10 +401,13 @@ func runServe(cmd *cobra.Command, args []string) {
 		router.Any("/monitoring/*a", gin.WrapH(h))
 	}
 
-	// Create HTTP server
+	// Create HTTP server with production-ready timeouts
 	srv := &http.Server{
-		Addr:    ":" + cfg.HTTPPort,
-		Handler: router,
+		Addr:         ":" + cfg.HTTPPort,
+		Handler:      router,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Handle OS shutdown signals
@@ -422,12 +429,21 @@ func runServe(cmd *cobra.Command, args []string) {
 	sig := <-quit
 	log.Printf("Received %v, shutting down...", sig)
 
-	// Stop watchers
-	if configWatcher != nil {
-		configWatcher.Stop()
-	}
-	if gitWatcher != nil {
-		gitWatcher.Stop()
+	// Stop watchers with timeout to prevent blocking forever
+	watcherDone := make(chan struct{})
+	go func() {
+		if configWatcher != nil {
+			configWatcher.Stop()
+		}
+		if gitWatcher != nil {
+			gitWatcher.Stop()
+		}
+		close(watcherDone)
+	}()
+	select {
+	case <-watcherDone:
+	case <-time.After(5 * time.Second):
+		log.Println("Warning: watchers did not stop within 5s timeout")
 	}
 
 	// Graceful shutdown of HTTP server
