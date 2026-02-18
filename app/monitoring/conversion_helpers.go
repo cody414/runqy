@@ -344,7 +344,7 @@ func toAggregatingTasks(in []*asynq.TaskInfo, pf PayloadFormatter) []*aggregatin
 
 type scheduledTask struct {
 	*baseTask
-	NextProcessAt time.Time `json:"next_process_at"`
+	NextProcessAt string `json:"next_process_at"`
 }
 
 func toScheduledTask(ti *asynq.TaskInfo, pf PayloadFormatter) *scheduledTask {
@@ -359,7 +359,7 @@ func toScheduledTask(ti *asynq.TaskInfo, pf PayloadFormatter) *scheduledTask {
 	}
 	return &scheduledTask{
 		baseTask:      base,
-		NextProcessAt: ti.NextProcessAt,
+		NextProcessAt: formatTimeInRFC3339(ti.NextProcessAt),
 	}
 }
 
@@ -373,7 +373,7 @@ func toScheduledTasks(in []*asynq.TaskInfo, pf PayloadFormatter) []*scheduledTas
 
 type retryTask struct {
 	*baseTask
-	NextProcessAt time.Time `json:"next_process_at"`
+	NextProcessAt string `json:"next_process_at"`
 }
 
 func toRetryTask(ti *asynq.TaskInfo, pf PayloadFormatter) *retryTask {
@@ -388,7 +388,7 @@ func toRetryTask(ti *asynq.TaskInfo, pf PayloadFormatter) *retryTask {
 	}
 	return &retryTask{
 		baseTask:      base,
-		NextProcessAt: ti.NextProcessAt,
+		NextProcessAt: formatTimeInRFC3339(ti.NextProcessAt),
 	}
 }
 
@@ -402,7 +402,7 @@ func toRetryTasks(in []*asynq.TaskInfo, pf PayloadFormatter) []*retryTask {
 
 type archivedTask struct {
 	*baseTask
-	LastFailedAt time.Time `json:"last_failed_at"`
+	LastFailedAt string `json:"last_failed_at"`
 }
 
 func toArchivedTask(ti *asynq.TaskInfo, pf PayloadFormatter) *archivedTask {
@@ -417,7 +417,7 @@ func toArchivedTask(ti *asynq.TaskInfo, pf PayloadFormatter) *archivedTask {
 	}
 	return &archivedTask{
 		baseTask:     base,
-		LastFailedAt: ti.LastFailedAt,
+		LastFailedAt: formatTimeInRFC3339(ti.LastFailedAt),
 	}
 }
 

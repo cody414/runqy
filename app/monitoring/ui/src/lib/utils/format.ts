@@ -31,20 +31,26 @@ export function formatNumber(num: number): string {
 /**
  * Format relative time (e.g., "2 minutes ago")
  */
-export function formatRelativeTime(date: Date | string): string {
+export function formatRelativeTime(date: Date | string | null | undefined): string {
+	if (!date || date === '') return '-';
 	const now = new Date();
 	const then = typeof date === 'string' ? new Date(date) : date;
+	if (isNaN(then.getTime()) || then.getFullYear() < 2000) return '-';
 	const diffMs = now.getTime() - then.getTime();
-	const diffSec = Math.floor(diffMs / 1000);
+	const absDiffMs = Math.abs(diffMs);
+	const isFuture = diffMs < 0;
+	const suffix = isFuture ? '' : ' ago';
+	const prefix = isFuture ? 'in ' : '';
+	const diffSec = Math.floor(absDiffMs / 1000);
 	const diffMin = Math.floor(diffSec / 60);
 	const diffHour = Math.floor(diffMin / 60);
 	const diffDay = Math.floor(diffHour / 24);
 
-	if (diffSec < 5) return 'just now';
-	if (diffSec < 60) return `${diffSec}s ago`;
-	if (diffMin < 60) return `${diffMin}m ago`;
-	if (diffHour < 24) return `${diffHour}h ago`;
-	if (diffDay < 7) return `${diffDay}d ago`;
+	if (diffSec < 5) return isFuture ? 'soon' : 'just now';
+	if (diffSec < 60) return `${prefix}${diffSec}s${suffix}`;
+	if (diffMin < 60) return `${prefix}${diffMin}m${suffix}`;
+	if (diffHour < 24) return `${prefix}${diffHour}h${suffix}`;
+	if (diffDay < 7) return `${prefix}${diffDay}d${suffix}`;
 
 	return then.toLocaleDateString();
 }

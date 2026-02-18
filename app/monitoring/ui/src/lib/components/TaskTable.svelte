@@ -30,9 +30,9 @@
 		if (!searchQuery) return true;
 		const query = searchQuery.toLowerCase();
 		return (
-			task.id.toLowerCase().includes(query) ||
-			task.type.toLowerCase().includes(query) ||
-			task.payload.toLowerCase().includes(query)
+			(task.id || '').toLowerCase().includes(query) ||
+			(task.type || '').toLowerCase().includes(query) ||
+			(task.payload || '').toLowerCase().includes(query)
 		);
 	}));
 
@@ -149,7 +149,7 @@
 						</td>
 					</tr>
 				{:else}
-					{#each filteredTasks as task (task.id)}
+					{#each filteredTasks as task, i (task.id || `_idx_${i}`)}
 						<tr class="task-row">
 							<td>
 								<input
@@ -206,8 +206,8 @@
 								</td>
 							{/if}
 							{#if taskState === 'archived'}
-								<td class="text-sm text-error-500 max-w-[200px] truncate" title={task.last_err}>
-									{task.last_err || '-'}
+								<td class="text-sm text-error-500 max-w-[200px] truncate" title={task.error_message}>
+									{task.error_message || '-'}
 								</td>
 							{/if}
 							<td>
@@ -304,11 +304,11 @@
 											</div>
 										{/if}
 									</div>
-									{#if task.last_err}
+									{#if task.error_message}
 										<div class="mt-4">
 											<h4 class="text-sm font-semibold mb-2 text-error-500">Last Error</h4>
 											<pre
-												class="p-3 rounded bg-error-100 dark:bg-error-900/30 text-error-700 dark:text-error-300 text-sm whitespace-pre-wrap">{task.last_err}</pre>
+												class="p-3 rounded bg-error-100 dark:bg-error-900/30 text-error-700 dark:text-error-300 text-sm whitespace-pre-wrap">{task.error_message}</pre>
 										</div>
 									{/if}
 									<div class="mt-4 grid grid-cols-4 gap-4 text-sm">
