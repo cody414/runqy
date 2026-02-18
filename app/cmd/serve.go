@@ -229,18 +229,25 @@ func runServe(cmd *cobra.Command, args []string) {
 	})
 
 	// Initialize encryption and JWT from centralized config
-	vaults.InitEncryptor(cfg.VaultMasterKey)
+	_, vaultInitResult := vaults.InitEncryptor(cfg.VaultMasterKey)
 	auth.InitJWTManager(cfg.JWTSecret)
 
 	// Initialize vault store
 	vaultStore := vaults.NewStore(db)
 	startupCfg.VaultsEnabled = vaultStore.IsEnabled()
-	if debugMode {
-		if vaultStore.IsEnabled() {
+
+	switch vaultInitResult {
+	case vaults.InitOK:
+		if debugMode {
 			log.Println("[VAULTS] Vaults feature enabled")
-		} else {
+		}
+	case vaults.InitNotSet:
+		if debugMode {
 			log.Println("[VAULTS] Warning: RUNQY_VAULT_MASTER_KEY not set, vaults feature disabled")
 		}
+	case vaults.InitInvalidKey:
+		log.Println("[VAULTS] Error: RUNQY_VAULT_MASTER_KEY is set but has invalid format (expected base64-encoded 32-byte key). Vaults feature disabled.")
+		log.Println("[VAULTS] Hint: generate a valid key with: openssl rand -base64 32")
 	}
 
 	// Register asynq metrics exporter for Prometheus
