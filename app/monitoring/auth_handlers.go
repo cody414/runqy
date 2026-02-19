@@ -19,7 +19,7 @@ func newAuthStatusHandlerFunc(authStore *auth.Store) http.HandlerFunc {
 		// Check if admin exists
 		hasAdmin, err := authStore.HasAdmin(ctx)
 		if err != nil {
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			writeJSONError(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
@@ -64,13 +64,13 @@ func newAuthSetupHandlerFunc(authStore *auth.Store) http.HandlerFunc {
 
 		var req auth.SetupRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			writeJSONError(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
 
 		// Validate passwords match
 		if req.Password != req.ConfirmPassword {
-			http.Error(w, auth.ErrPasswordMismatch.Error(), http.StatusBadRequest)
+			writeJSONError(w, auth.ErrPasswordMismatch.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -79,11 +79,11 @@ func newAuthSetupHandlerFunc(authStore *auth.Store) http.HandlerFunc {
 		if err != nil {
 			switch err {
 			case auth.ErrAdminExists:
-				http.Error(w, err.Error(), http.StatusConflict)
+				writeJSONError(w, err.Error(), http.StatusConflict)
 			case auth.ErrPasswordTooShort, auth.ErrInvalidEmail:
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				writeJSONError(w, err.Error(), http.StatusBadRequest)
 			default:
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				writeJSONError(w, "Internal server error", http.StatusInternalServerError)
 			}
 			return
 		}
@@ -91,7 +91,7 @@ func newAuthSetupHandlerFunc(authStore *auth.Store) http.HandlerFunc {
 		// Generate JWT and set cookie
 		token, expiresAt, err := jwtManager.GenerateToken(admin.Email)
 		if err != nil {
-			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+			writeJSONError(w, "Failed to generate token", http.StatusInternalServerError)
 			return
 		}
 
@@ -113,16 +113,16 @@ func newAuthLoginHandlerFunc(authStore *auth.Store) http.HandlerFunc {
 
 		var req auth.LoginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			writeJSONError(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
 
 		admin, err := authStore.ValidateCredentials(ctx, req.Email, req.Password)
 		if err != nil {
 			if err == auth.ErrInvalidCredentials {
-				http.Error(w, err.Error(), http.StatusUnauthorized)
+				writeJSONError(w, err.Error(), http.StatusUnauthorized)
 			} else {
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				writeJSONError(w, "Internal server error", http.StatusInternalServerError)
 			}
 			return
 		}
@@ -130,7 +130,7 @@ func newAuthLoginHandlerFunc(authStore *auth.Store) http.HandlerFunc {
 		// Generate JWT and set cookie
 		token, expiresAt, err := jwtManager.GenerateToken(admin.Email)
 		if err != nil {
-			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+			writeJSONError(w, "Failed to generate token", http.StatusInternalServerError)
 			return
 		}
 

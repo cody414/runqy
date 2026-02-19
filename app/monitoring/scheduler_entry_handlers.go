@@ -18,7 +18,7 @@ func newListSchedulerEntriesHandlerFunc(inspector *asynq.Inspector, pf PayloadFo
 	return func(w http.ResponseWriter, r *http.Request) {
 		entries, err := inspector.SchedulerEntries()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		payload := make(map[string]interface{})
@@ -29,7 +29,7 @@ func newListSchedulerEntriesHandlerFunc(inspector *asynq.Inspector, pf PayloadFo
 			payload["entries"] = toSchedulerEntries(entries, pf)
 		}
 		if err := json.NewEncoder(w).Encode(payload); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -46,14 +46,14 @@ func newListSchedulerEnqueueEventsHandlerFunc(inspector *asynq.Inspector) http.H
 		events, err := inspector.ListSchedulerEnqueueEvents(
 			entryID, asynq.PageSize(pageSize), asynq.Page(pageNum))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		resp := listSchedulerEnqueueEventsResponse{
 			Events: toSchedulerEnqueueEvents(events),
 		}
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}

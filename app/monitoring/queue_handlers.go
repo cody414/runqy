@@ -20,14 +20,14 @@ func newListQueuesHandlerFunc(inspector *asynq.Inspector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		qnames, err := inspector.Queues()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		snapshots := make([]*queueStateSnapshot, len(qnames))
 		for i, qname := range qnames {
 			qinfo, err := inspector.GetQueueInfo(qname)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			snapshots[i] = toQueueStateSnapshot(qinfo)
@@ -46,7 +46,7 @@ func newGetQueueHandlerFunc(inspector *asynq.Inspector) http.HandlerFunc {
 		qinfo, err := inspector.GetQueueInfo(qname)
 		if err != nil {
 			// TODO: Check for queue not found error.
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		payload["current"] = toQueueStateSnapshot(qinfo)
@@ -54,7 +54,7 @@ func newGetQueueHandlerFunc(inspector *asynq.Inspector) http.HandlerFunc {
 		// TODO: make this n a variable
 		data, err := inspector.History(qname, 10)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		var dailyStats []*dailyStats
@@ -78,10 +78,10 @@ func newDeleteQueueHandlerFunc(inspector *asynq.Inspector, queueStore *queuework
 			// Ignore "queue not found" in Redis - it might only exist in DB
 			if !errors.Is(err, asynq.ErrQueueNotFound) {
 				if errors.Is(err, asynq.ErrQueueNotEmpty) {
-					http.Error(w, "queue is not empty - use force=true to delete anyway", http.StatusBadRequest)
+					writeJSONError(w, "queue is not empty - use force=true to delete anyway", http.StatusBadRequest)
 					return
 				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}
@@ -103,7 +103,7 @@ func newPauseQueueHandlerFunc(inspector *asynq.Inspector) http.HandlerFunc {
 		vars := mux.Vars(r)
 		qname := vars["qname"]
 		if err := inspector.PauseQueue(qname); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -115,7 +115,7 @@ func newResumeQueueHandlerFunc(inspector *asynq.Inspector) http.HandlerFunc {
 		vars := mux.Vars(r)
 		qname := vars["qname"]
 		if err := inspector.UnpauseQueue(qname); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -125,7 +125,7 @@ func newResumeQueueHandlerFunc(inspector *asynq.Inspector) http.HandlerFunc {
 func newRestoreQueueHandlerFunc(queueStore *queueworker.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if queueStore == nil {
-			http.Error(w, "queue store not configured", http.StatusInternalServerError)
+			writeJSONError(w, "queue store not configured", http.StatusInternalServerError)
 			return
 		}
 
@@ -140,7 +140,7 @@ func newRestoreQueueHandlerFunc(queueStore *queueworker.Store) http.HandlerFunc 
 		if hasSubQueue {
 			// Restore a specific sub-queue
 			if err := queueStore.RestoreSubQueue(ctx, qname); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				writeJSONError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			// Re-register in asynq
@@ -150,7 +150,7 @@ func newRestoreQueueHandlerFunc(queueStore *queueworker.Store) http.HandlerFunc 
 		} else {
 			// Restore the entire parent queue and all its sub-queues
 			if err := queueStore.EnableQueue(ctx, parent); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				writeJSONError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			// Re-register all sub-queues in asynq
@@ -181,7 +181,7 @@ func newListQueueStatsHandlerFunc(inspector *asynq.Inspector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		qnames, err := inspector.Queues()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		resp := listQueueStatsResponse{Stats: make(map[string][]*dailyStats)}
@@ -189,13 +189,13 @@ func newListQueueStatsHandlerFunc(inspector *asynq.Inspector) http.HandlerFunc {
 		for _, qname := range qnames {
 			stats, err := inspector.History(qname, numdays)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			resp.Stats[qname] = toDailyStatsList(stats)
 		}
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
