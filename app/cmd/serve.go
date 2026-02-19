@@ -108,6 +108,11 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	cfg := GetConfig()
 
+	// Warn if API key is not configured
+	if cfg.APIKey == "" {
+		log.Println("WARNING: RUNQY_API_KEY is not set. API endpoints will reject all requests.")
+	}
+
 	// Override config from CLI flags
 	if configDir != "" {
 		cfg.QueueWorkersDir = configDir

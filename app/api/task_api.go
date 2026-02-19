@@ -189,7 +189,7 @@ func AddTask(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFunc {
         var payloadToSend interface{}
 
 		// Validate payload against YAML schema for this queue if available
-		yamls, err := queueworker.LoadAll(qwConfigDir)
+		yamls, err := queueworker.LoadAllCached(qwConfigDir)
 		if err == nil && len(yamls) > 0 {
 			var matched *queueworker.QueueYAML
 			// Try to find the queue by matching runtime config names

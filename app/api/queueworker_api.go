@@ -589,6 +589,9 @@ func reloadFromYAML(ctx context.Context, store *queueworker.Store, dir string) (
 	var reloaded []string
 	var errors []string
 
+	// Invalidate cache so fresh YAML is loaded from disk
+	queueworker.InvalidateYAMLCache()
+
 	yamls, err := queueworker.LoadAll(dir)
 	if err != nil {
 		errors = append(errors, "failed to load YAML files: "+err.Error())

@@ -29,27 +29,22 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 	// Setup CLI API endpoints (queue/task management)
 	inspector := asynq.NewInspector(redisOpt)
 	SetupCLIAPI(r, inspector, qwStore, apiKey)
-	// api GET queue
+	// Queue API - all routes require API key
 	router_predict := r.Group("queue")
-	router_predict.GET("/:uuid", GetTaskStatus)
-	// api POST queue
 	router_predict.Use(Authorize(apiKey))
+	router_predict.GET("/:uuid", GetTaskStatus)
 	router_predict.POST("/add", AddTask(qwConfigDir, qwStore))
 	router_predict.POST("/add-batch", AddTaskBatch(qwConfigDir, qwStore))
 
-	// Workers API
-	router_workers := r.Group("workers")
-
-	// Public queue config endpoint (used by workers during bootstrap)
-	router_workers.GET("/config/:queue_name", GetQueueConfig(qwStore))
-
-	// Worker registration endpoint - workers are trusted, no API key validation
+	// Worker registration endpoint
 	router_worker := r.Group("worker")
 	router_worker.Use(Authorize(apiKey))
 	router_worker.POST("/register", WorkerHandshake(qwStore, cfg))
 
-	// All other endpoints require API key
+	// Workers API - all routes require API key
+	router_workers := r.Group("workers")
 	router_workers.Use(Authorize(apiKey))
+	router_workers.GET("/config/:queue_name", GetQueueConfig(qwStore))
 	router_workers.GET("", ListWorkers)
 	router_workers.GET("/:worker_id", GetWorker)
 	router_workers.GET("/queues", ListQueueConfigs(qwStore))
