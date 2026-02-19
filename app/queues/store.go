@@ -539,29 +539,35 @@ func (s *Store) DisableQueue(ctx context.Context, queueName string) error {
 		return nil // Queue not found, nothing to delete
 	}
 
-	// Disable all sub-queues first
-	var subQuery string
-	if driverName == "sqlite" {
-		subQuery = `UPDATE sub_queues SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE queue_id = ?`
-	} else {
-		subQuery = s.db.Rebind(`UPDATE sub_queues SET enabled = false, updated_at = NOW() WHERE queue_id = ?`)
+	tx, err := s.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
 	}
-	if _, err := s.db.ExecContext(ctx, subQuery, queue.ID); err != nil {
-		return fmt.Errorf("failed to disable sub-queues: %w", err)
-	}
+	defer tx.Rollback()
 
-	// Then disable the parent queue
+	// Disable the parent queue first (consistent ordering)
 	var queueQuery string
 	if driverName == "sqlite" {
 		queueQuery = `UPDATE queues SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 	} else {
 		queueQuery = s.db.Rebind(`UPDATE queues SET enabled = false, updated_at = NOW() WHERE id = ?`)
 	}
-	if _, err := s.db.ExecContext(ctx, queueQuery, queue.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, queueQuery, queue.ID); err != nil {
 		return fmt.Errorf("failed to disable queue: %w", err)
 	}
 
-	return nil
+	// Then disable all sub-queues
+	var subQuery string
+	if driverName == "sqlite" {
+		subQuery = `UPDATE sub_queues SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE queue_id = ?`
+	} else {
+		subQuery = s.db.Rebind(`UPDATE sub_queues SET enabled = false, updated_at = NOW() WHERE queue_id = ?`)
+	}
+	if _, err := tx.ExecContext(ctx, subQuery, queue.ID); err != nil {
+		return fmt.Errorf("failed to disable sub-queues: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 // EnableQueue sets enabled=true for a parent queue and all its sub-queues (restore)
@@ -577,14 +583,20 @@ func (s *Store) EnableQueue(ctx context.Context, queueName string) error {
 		return fmt.Errorf("queue '%s' not found", queueName)
 	}
 
-	// Enable the parent queue first
+	tx, err := s.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Enable the parent queue first (consistent ordering: parent then sub-queues)
 	var queueQuery string
 	if driverName == "sqlite" {
 		queueQuery = `UPDATE queues SET enabled = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 	} else {
 		queueQuery = s.db.Rebind(`UPDATE queues SET enabled = true, updated_at = NOW() WHERE id = ?`)
 	}
-	if _, err := s.db.ExecContext(ctx, queueQuery, queue.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, queueQuery, queue.ID); err != nil {
 		return fmt.Errorf("failed to enable queue: %w", err)
 	}
 
@@ -595,11 +607,11 @@ func (s *Store) EnableQueue(ctx context.Context, queueName string) error {
 	} else {
 		subQuery = s.db.Rebind(`UPDATE sub_queues SET enabled = true, updated_at = NOW() WHERE queue_id = ?`)
 	}
-	if _, err := s.db.ExecContext(ctx, subQuery, queue.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, subQuery, queue.ID); err != nil {
 		return fmt.Errorf("failed to enable sub-queues: %w", err)
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 // HardDeleteQueue permanently removes a parent queue and all its sub-queues (via cascade)

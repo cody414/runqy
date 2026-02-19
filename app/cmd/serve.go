@@ -186,6 +186,16 @@ func runServe(cmd *cobra.Command, args []string) {
 	}
 	router.Use(cors.Default())
 
+	// Body size limit middleware
+	maxBodySize := cfg.MaxBodySize
+	if maxBodySize <= 0 {
+		maxBodySize = 50 * 1024 * 1024 // 50MB default
+	}
+	router.Use(func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBodySize)
+		c.Next()
+	})
+
 	redisAddr, err := models.BuildRedisConns(cfg)
 	if err != nil {
 		log.Fatalf("Redis connection failed: %v", err)
@@ -259,7 +269,11 @@ func runServe(cmd *cobra.Command, args []string) {
 	inspector := asynq.NewInspector(redisAddr.AsynqOpt)
 	defer inspector.Close()
 	metricsExporter := metrics.NewQueueMetricsCollector(inspector)
-	prometheus.MustRegister(metricsExporter)
+	if err := prometheus.Register(metricsExporter); err != nil {
+		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+			log.Fatalf("Failed to register metrics exporter: %v", err)
+		}
+	}
 	if debugMode {
 		log.Println("[METRICS] Prometheus metrics exporter registered at /metrics")
 	}

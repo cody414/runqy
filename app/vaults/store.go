@@ -4,9 +4,24 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+)
+
+var (
+	// validKeyName matches environment-variable-safe key names
+	validKeyName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+	// reservedKeyNames are names that must not be overridden via vaults
+	reservedKeyNames = map[string]bool{
+		"PATH":        true,
+		"HOME":        true,
+		"VIRTUAL_ENV": true,
+		"PYTHONPATH":  true,
+	}
 )
 
 // Store handles vault persistence to the database.
@@ -205,10 +220,25 @@ func (s *Store) VaultExists(ctx context.Context, name string) (bool, error) {
 
 // --- Vault Entry CRUD ---
 
+// ValidateKeyName checks that a vault key name is safe for use as an environment variable.
+func ValidateKeyName(key string) error {
+	if !validKeyName.MatchString(key) {
+		return fmt.Errorf("invalid key name %q: must match [A-Za-z_][A-Za-z0-9_]*", key)
+	}
+	if reservedKeyNames[strings.ToUpper(key)] {
+		return fmt.Errorf("reserved key name %q: cannot override system variables (PATH, HOME, VIRTUAL_ENV, PYTHONPATH)", key)
+	}
+	return nil
+}
+
 // SetEntry sets a key-value pair in a vault (creates or updates).
 func (s *Store) SetEntry(ctx context.Context, vaultName, key, value string, isSecret bool) error {
 	if !s.encryptor.IsEnabled() {
 		return ErrVaultsDisabled
+	}
+
+	if err := ValidateKeyName(key); err != nil {
+		return err
 	}
 
 	vault, err := s.GetVault(ctx, vaultName)
