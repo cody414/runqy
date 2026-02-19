@@ -24,12 +24,27 @@ var (
 	// validKeyName matches environment-variable-safe key names
 	validKeyName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
+	// validVaultName matches safe vault names (alphanumeric, hyphens, underscores)
+	validVaultName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
+
 	// reservedKeyNames are names that must not be overridden via vaults
 	reservedKeyNames = map[string]bool{
 		"PATH":        true,
 		"HOME":        true,
 		"VIRTUAL_ENV": true,
 		"PYTHONPATH":  true,
+	}
+
+	// reservedVaultNames are names that could cause confusion with system variables
+	reservedVaultNames = map[string]bool{
+		"PATH":        true,
+		"HOME":        true,
+		"VIRTUAL_ENV": true,
+		"PYTHONPATH":  true,
+		"USER":        true,
+		"SHELL":       true,
+		"PWD":         true,
+		"TMPDIR":      true,
 	}
 )
 
@@ -58,6 +73,16 @@ func (s *Store) IsEnabled() bool {
 func (s *Store) CreateVault(ctx context.Context, name, description string) (*Vault, error) {
 	if !s.encryptor.IsEnabled() {
 		return nil, ErrVaultsDisabled
+	}
+
+	if name == "" {
+		return nil, fmt.Errorf("vault name cannot be empty")
+	}
+	if !validVaultName.MatchString(name) {
+		return nil, fmt.Errorf("invalid vault name %q: must start with a letter or digit, contain only alphanumeric, hyphens, underscores (max 64 chars)", name)
+	}
+	if reservedVaultNames[strings.ToUpper(name)] {
+		return nil, fmt.Errorf("reserved vault name %q: cannot use system variable names", name)
 	}
 
 	now := time.Now()
