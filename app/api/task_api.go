@@ -307,6 +307,9 @@ func AddTask(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFunc {
 func waitForResult(ctx context.Context, i *asynq.Inspector, queue, taskID string) (*asynq.TaskInfo, error) {
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
+
+	timeout := time.After(30 * time.Second)
+
 	for {
 		select {
 		case <-t.C:
@@ -314,10 +317,12 @@ func waitForResult(ctx context.Context, i *asynq.Inspector, queue, taskID string
 			if err != nil {
 				return nil, err
 			}
-			if taskInfo.LastErr != "" {
+			if taskInfo.State == asynq.TaskStateCompleted || taskInfo.State == asynq.TaskStateArchived {
 				return taskInfo, nil
 			}
-			return taskInfo, nil
+			// Continue polling for non-terminal states
+		case <-timeout:
+			return nil, fmt.Errorf("timeout waiting for task result")
 		case <-ctx.Done():
 			return nil, fmt.Errorf("context closed")
 		}
