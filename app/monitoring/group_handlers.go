@@ -19,12 +19,12 @@ func newListGroupsHandlerFunc(inspector *asynq.Inspector) http.HandlerFunc {
 
 		groups, err := inspector.Groups(qname)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		qinfo, err := inspector.GetQueueInfo(qname)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -33,7 +33,7 @@ func newListGroupsHandlerFunc(inspector *asynq.Inspector) http.HandlerFunc {
 			Groups: toGroupInfos(groups),
 		}
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}

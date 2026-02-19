@@ -36,7 +36,7 @@ func newRedisInfoHandlerFunc(client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res, err := client.Info(context.Background()).Result()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		info := parseRedisInfo(res)
@@ -47,7 +47,7 @@ func newRedisInfoHandlerFunc(client *redis.Client) http.HandlerFunc {
 			Cluster: false,
 		}
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -58,18 +58,18 @@ func newRedisClusterInfoHandlerFunc(client *redis.ClusterClient, inspector *asyn
 		ctx := context.Background()
 		rawClusterInfo, err := client.ClusterInfo(ctx).Result()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		info := parseRedisInfo(rawClusterInfo)
 		rawClusterNodes, err := client.ClusterNodes(ctx).Result()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		queues, err := inspector.Queues()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		var queueLocations []*queueLocationInfo
@@ -77,12 +77,12 @@ func newRedisClusterInfoHandlerFunc(client *redis.ClusterClient, inspector *asyn
 			q := queueLocationInfo{Queue: qname}
 			q.KeySlot, err = inspector.ClusterKeySlot(qname)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			nodes, err := inspector.ClusterNodes(qname)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				writeJSONError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			for _, n := range nodes {
@@ -100,7 +100,7 @@ func newRedisClusterInfoHandlerFunc(client *redis.ClusterClient, inspector *asyn
 			QueueLocations:  queueLocations,
 		}
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}

@@ -79,7 +79,7 @@ func newDatabaseInfoHandlerFunc(db *sqlx.DB, cfg *config.Config) http.HandlerFun
 		}
 
 		if err := json.NewEncoder(w).Encode(info); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}

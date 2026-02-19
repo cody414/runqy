@@ -20,14 +20,14 @@ func newListServersHandlerFunc(inspector *asynq.Inspector, pf PayloadFormatter) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		srvs, err := inspector.Servers()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		resp := listServersResponse{
 			Servers: toServerInfoList(srvs, pf),
 		}
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
