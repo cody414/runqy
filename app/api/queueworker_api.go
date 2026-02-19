@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Publikey/runqy/config"
+	"github.com/Publikey/runqy/models"
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/Publikey/runqy/vaults"
 	"github.com/gin-gonic/gin"
@@ -104,8 +105,9 @@ func resolveGitToken(ctx context.Context, tokenRef string, vaultStore *vaults.St
 
 // QueuesListResponse is the response for listing all queues
 type QueuesListResponse struct {
-	Queues []queueworker.QueueSummary `json:"queues"`
-	Count  int                        `json:"count"`
+	Queues   []queueworker.QueueSummary `json:"queues"`
+	Count    int                        `json:"count"`
+	Warnings []string                   `json:"warnings,omitempty"`
 }
 
 // ReloadResponse is the response for reloading configurations
@@ -320,7 +322,7 @@ func GetQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 
 		cfg, err := store.Get(c.Request.Context(), queueName)
 		if err != nil || cfg == nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "queue not found"})
+			c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"queue not found"}})
 			return
 		}
 
@@ -340,15 +342,21 @@ func ListQueueConfigs(store *queueworker.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		queues, err := store.ListQueues(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
 		// Get summary for each queue
 		summaries := make([]queueworker.QueueSummary, 0, len(queues))
+		var warnings []string
 		for _, q := range queues {
 			cfg, err := store.Get(c.Request.Context(), q)
-			if err != nil || cfg == nil {
+			if err != nil {
+				warnings = append(warnings, fmt.Sprintf("failed to get config for queue '%s': %v", q, err))
+				continue
+			}
+			if cfg == nil {
+				warnings = append(warnings, fmt.Sprintf("config not found for queue '%s'", q))
 				continue
 			}
 			summaries = append(summaries, queueworker.QueueSummary{
@@ -358,8 +366,9 @@ func ListQueueConfigs(store *queueworker.Store) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, QueuesListResponse{
-			Queues: summaries,
-			Count:  len(summaries),
+			Queues:   summaries,
+			Count:    len(summaries),
+			Warnings: warnings,
 		})
 	}
 }
@@ -381,7 +390,7 @@ func CreateQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req CreateQueueRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -391,11 +400,11 @@ func CreateQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 		// Validate deployment if provided
 		if req.Deployment != nil {
 			if req.Deployment.GitURL == "" {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "git_url is required for deployment"})
+				c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"git_url is required for deployment"}})
 				return
 			}
 			if req.Deployment.StartupCmd == "" {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "startup_cmd is required for deployment"})
+				c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"startup_cmd is required for deployment"}})
 				return
 			}
 		}
@@ -405,13 +414,13 @@ func CreateQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 		// Check if queue already exists
 		exists, err := store.Exists(ctx, req.Name)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check queue existence: " + err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"failed to check queue existence: " + err.Error()}})
 			return
 		}
 
 		if exists && !force {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": fmt.Sprintf("queue '%s' already exists. Use --force to update existing queue", req.Name),
+			c.JSON(http.StatusConflict, models.APIErrorResponse{
+				Errors: []string{fmt.Sprintf("queue '%s' already exists. Use --force to update existing queue", req.Name)},
 			})
 			return
 		}
@@ -426,7 +435,7 @@ func CreateQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 		}
 
 		if err := store.Save(ctx, cfg); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -461,7 +470,7 @@ func DeleteQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		queueName := c.Param("queue_name")
 		if queueName == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "queue name is required"})
+			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"queue name is required"}})
 			return
 		}
 
@@ -470,18 +479,18 @@ func DeleteQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 		// Check if queue exists
 		exists, err := store.Exists(ctx, queueName)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check queue existence: " + err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"failed to check queue existence: " + err.Error()}})
 			return
 		}
 
 		if !exists {
-			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("queue '%s' not found", queueName)})
+			c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{fmt.Sprintf("queue '%s' not found", queueName)}})
 			return
 		}
 
 		// Delete the queue (soft-delete)
 		if err := store.Delete(ctx, queueName); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -510,7 +519,7 @@ func RestoreQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		queueName := c.Param("queue_name")
 		if queueName == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "queue name is required"})
+			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"queue name is required"}})
 			return
 		}
 
@@ -522,7 +531,7 @@ func RestoreQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 		if hasSubQueue {
 			// Restore a specific sub-queue
 			if err := store.RestoreSubQueue(ctx, queueName); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
 			// Re-register in asynq
@@ -532,7 +541,7 @@ func RestoreQueueConfig(store *queueworker.Store) gin.HandlerFunc {
 		} else {
 			// Restore the entire parent queue
 			if err := store.EnableQueue(ctx, parent); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
 			// Re-register all sub-queues in asynq

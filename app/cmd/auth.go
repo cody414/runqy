@@ -235,6 +235,9 @@ func runAuthList(cmd *cobra.Command, args []string) error {
 }
 
 func runAuthSwitch(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "profile name"); err != nil {
+		return err
+	}
 	profileName := args[0]
 
 	if err := SetCurrentProfile(profileName); err != nil {

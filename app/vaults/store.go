@@ -3,12 +3,21 @@ package vaults
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+)
+
+var (
+	// ErrVaultNotFound is returned when a vault does not exist.
+	ErrVaultNotFound = errors.New("vault not found")
+
+	// ErrEntryNotFound is returned when a vault entry does not exist.
+	ErrEntryNotFound = errors.New("entry not found")
 )
 
 var (
@@ -175,7 +184,7 @@ func (s *Store) DeleteVault(ctx context.Context, name string) error {
 		return err
 	}
 	if vault == nil {
-		return fmt.Errorf("vault '%s' not found", name)
+		return fmt.Errorf("vault '%s': %w", name, ErrVaultNotFound)
 	}
 
 	// Delete entries first (foreign key)
@@ -246,7 +255,7 @@ func (s *Store) SetEntry(ctx context.Context, vaultName, key, value string, isSe
 		return err
 	}
 	if vault == nil {
-		return fmt.Errorf("vault '%s' not found", vaultName)
+		return fmt.Errorf("vault '%s': %w", vaultName, ErrVaultNotFound)
 	}
 
 	// Encrypt the value
@@ -312,7 +321,7 @@ func (s *Store) GetEntry(ctx context.Context, vaultName, key string) (string, bo
 		return "", false, err
 	}
 	if vault == nil {
-		return "", false, fmt.Errorf("vault '%s' not found", vaultName)
+		return "", false, fmt.Errorf("vault '%s': %w", vaultName, ErrVaultNotFound)
 	}
 
 	entry, err := s.getEntry(ctx, vault.ID, key)
@@ -320,7 +329,7 @@ func (s *Store) GetEntry(ctx context.Context, vaultName, key string) (string, bo
 		return "", false, err
 	}
 	if entry == nil {
-		return "", false, fmt.Errorf("key '%s' not found in vault '%s'", key, vaultName)
+		return "", false, fmt.Errorf("key '%s' in vault '%s': %w", key, vaultName, ErrEntryNotFound)
 	}
 
 	value, err := s.encryptor.DecryptString(entry.Value)
@@ -365,7 +374,7 @@ func (s *Store) DeleteEntry(ctx context.Context, vaultName, key string) error {
 		return err
 	}
 	if vault == nil {
-		return fmt.Errorf("vault '%s' not found", vaultName)
+		return fmt.Errorf("vault '%s': %w", vaultName, ErrVaultNotFound)
 	}
 
 	var query string
@@ -382,7 +391,7 @@ func (s *Store) DeleteEntry(ctx context.Context, vaultName, key string) error {
 
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return fmt.Errorf("key '%s' not found in vault '%s'", key, vaultName)
+		return fmt.Errorf("key '%s' in vault '%s': %w", key, vaultName, ErrEntryNotFound)
 	}
 
 	return nil
@@ -399,7 +408,7 @@ func (s *Store) ListEntries(ctx context.Context, vaultName string) ([]VaultEntry
 		return nil, err
 	}
 	if vault == nil {
-		return nil, fmt.Errorf("vault '%s' not found", vaultName)
+		return nil, fmt.Errorf("vault '%s': %w", vaultName, ErrVaultNotFound)
 	}
 
 	var entries []VaultEntry
@@ -474,7 +483,7 @@ func (s *Store) GetVaultData(ctx context.Context, vaultName string) (VaultData, 
 		return nil, err
 	}
 	if vault == nil {
-		return nil, fmt.Errorf("vault '%s' not found", vaultName)
+		return nil, fmt.Errorf("vault '%s': %w", vaultName, ErrVaultNotFound)
 	}
 
 	var entries []VaultEntry

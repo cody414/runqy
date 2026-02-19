@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Publikey/runqy/models"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
@@ -42,13 +43,13 @@ type WorkersResponse struct {
 func ListWorkers(c *gin.Context) {
 	rdb, exists := c.Get("rdb")
 	if !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Redis client not available"})
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis client not available"}})
 		return
 	}
 
 	redisClient, ok := rdb.(*redis.Client)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid Redis client type"})
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis client type"}})
 		return
 	}
 	ctx := c.Request.Context()
@@ -64,7 +65,7 @@ func ListWorkers(c *gin.Context) {
 		}
 	}
 	if err := iter.Err(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to scan workers: %v", err)})
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{fmt.Sprintf("Failed to scan workers: %v", err)}})
 		return
 	}
 
@@ -127,13 +128,13 @@ func GetWorker(c *gin.Context) {
 
 	rdb, exists := c.Get("rdb")
 	if !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Redis client not available"})
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis client not available"}})
 		return
 	}
 
 	redisClient, ok := rdb.(*redis.Client)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid Redis client type"})
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis client type"}})
 		return
 	}
 	ctx := c.Request.Context()
@@ -141,12 +142,12 @@ func GetWorker(c *gin.Context) {
 	workerKey := "asynq:workers:" + workerID
 	data, err := redisClient.HGetAll(ctx, workerKey).Result()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get worker: %v", err)})
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{fmt.Sprintf("Failed to get worker: %v", err)}})
 		return
 	}
 
 	if len(data) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Worker not found"})
+		c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"Worker not found"}})
 		return
 	}
 

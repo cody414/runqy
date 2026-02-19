@@ -109,6 +109,10 @@ func init() {
 }
 
 func runTaskEnqueue(cmd *cobra.Command, args []string) error {
+	if taskTimeout <= 0 {
+		return fmt.Errorf("--timeout must be positive, got %d", taskTimeout)
+	}
+
 	// Validate JSON payload
 	var payload json.RawMessage
 	if err := json.Unmarshal([]byte(taskPayload), &payload); err != nil {
@@ -152,6 +156,24 @@ func runTaskEnqueue(cmd *cobra.Command, args []string) error {
 }
 
 func runTaskList(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "queue name"); err != nil {
+		return err
+	}
+
+	// Validate --state before connecting to Redis
+	validStates := map[string]bool{
+		"pending": true, "active": true, "scheduled": true,
+		"retry": true, "archived": true, "completed": true,
+	}
+	if !validStates[taskState] {
+		return fmt.Errorf("invalid state '%s', valid: pending, active, scheduled, retry, archived, completed", taskState)
+	}
+
+	// Validate --limit
+	if taskLimit <= 0 {
+		return fmt.Errorf("--limit must be positive, got %d", taskLimit)
+	}
+
 	queueName := args[0]
 
 	// Remote mode: use API client
@@ -285,6 +307,9 @@ func runTaskListRemote(queueName string) error {
 }
 
 func runTaskGet(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "queue name", "task ID"); err != nil {
+		return err
+	}
 	queueName := args[0]
 	taskID := args[1]
 
@@ -368,6 +393,9 @@ func runTaskGetRemote(queueName, taskID string) error {
 }
 
 func runTaskCancel(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "task ID"); err != nil {
+		return err
+	}
 	taskID := args[0]
 
 	// Remote mode: use API client
@@ -396,6 +424,9 @@ func runTaskCancel(cmd *cobra.Command, args []string) error {
 }
 
 func runTaskDelete(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "queue name", "task ID"); err != nil {
+		return err
+	}
 	queueName := args[0]
 	taskID := args[1]
 

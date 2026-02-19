@@ -129,7 +129,10 @@ func runServe(cmd *cobra.Command, args []string) {
 	if cloneDir != "" {
 		cfg.ConfigCloneDir = cloneDir
 	}
-	if watchInterval > 0 {
+	if cmd.Flags().Changed("watch-interval") {
+		if watchInterval <= 0 {
+			log.Fatalf("--watch-interval must be positive, got %d", watchInterval)
+		}
 		cfg.ConfigWatchInterval = watchInterval
 	}
 	if useSQLite {

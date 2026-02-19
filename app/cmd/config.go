@@ -440,6 +440,11 @@ func runConfigCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runConfigCreateLocal() error {
+	// Validate --mode if building from inline parameters (not file)
+	if createFile == "" && createMode != "long_running" && createMode != "one_shot" {
+		return fmt.Errorf("invalid mode '%s', must be 'long_running' or 'one_shot'", createMode)
+	}
+
 	// Build PostgreSQL connection
 	cfg := GetConfig()
 	pgDB, err := models.BuildPostgresDB(cfg)
@@ -567,6 +572,11 @@ func runConfigCreateLocal() error {
 }
 
 func runConfigCreateRemote() error {
+	// Validate --mode if building from inline parameters (not file)
+	if createFile == "" && createMode != "long_running" && createMode != "one_shot" {
+		return fmt.Errorf("invalid mode '%s', must be 'long_running' or 'one_shot'", createMode)
+	}
+
 	apiClient := NewAPIClient()
 
 	if createFile != "" {

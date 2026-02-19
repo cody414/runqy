@@ -35,7 +35,7 @@ const (
 
 var (
 	// ErrVaultsDisabled is returned when the master key is not configured.
-	ErrVaultsDisabled = errors.New("vaults not configured: RUNQY_VAULT_MASTER_KEY not set")
+	ErrVaultsDisabled = errors.New("vaults not enabled: RUNQY_VAULT_MASTER_KEY not set")
 
 	// ErrInvalidKey is returned when the master key has an invalid format.
 	ErrInvalidKey = errors.New("invalid master key: must be 32 bytes (256 bits) base64-encoded")

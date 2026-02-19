@@ -71,7 +71,7 @@ func GetTaskStatus(c *gin.Context) {
 
 	resp, err := waitForResult(c.Request.Context(), inspector, queue, uuid)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
+		c.JSON(http.StatusRequestTimeout, models.APIErrorResponse{Errors: []string{err.Error()}})
 		return
 	}
 
@@ -351,6 +351,24 @@ func checkAllowedType(v interface{}, allowed []string) bool {
 	}
 }
 
+// describeType returns a human-readable type name for a JSON value
+func describeType(v interface{}) string {
+	switch v.(type) {
+	case string:
+		return "string"
+	case bool:
+		return "bool"
+	case float64:
+		return "number"
+	case []interface{}:
+		return "array"
+	case map[string]interface{}:
+		return "object"
+	default:
+		return fmt.Sprintf("%T", v)
+	}
+}
+
 func contains(arr []string, s string) bool {
 	for _, v := range arr {
 		if v == s {
@@ -393,7 +411,7 @@ func validateFields(dataMap map[string]interface{}, fields []queueworker.FieldSc
 
 		// Validate type
 		if !checkAllowedType(val, field.Type) {
-			return nil, fmt.Errorf("%s has invalid type", field.Name)
+			return nil, fmt.Errorf("field '%s' has type %s, expected one of: %s", field.Name, describeType(val), strings.Join(field.Type, ", "))
 		}
 
 		// Convert float64 -> int64 for int-typed fields
