@@ -33,12 +33,30 @@ import (
 func GetTaskStatus(c *gin.Context) {
 	uuid := c.Param("uuid")
 
-	rdb := c.Keys["rdb"].(*redis.Client)
-	redisOpt := c.Keys["redisOpt"].(asynq.RedisClientOpt)
+	rdb, ok := c.Get("rdb")
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis client not available"}})
+		return
+	}
+	redisClient, ok := rdb.(*redis.Client)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis client type"}})
+		return
+	}
+	redisOptVal, ok := c.Get("redisOpt")
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis options not available"}})
+		return
+	}
+	redisOpt, ok := redisOptVal.(asynq.RedisClientOpt)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis options type"}})
+		return
+	}
 
 	// Look up queue from task hash: asynq:t:{task_id}
 	taskKey := fmt.Sprintf("asynq:t:%s", uuid)
-	queue, err := rdb.HGet(c, taskKey, "queue").Result()
+	queue, err := redisClient.HGet(c, taskKey, "queue").Result()
 	if err == redis.Nil {
 		c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"task not found"}})
 		return
@@ -51,9 +69,9 @@ func GetTaskStatus(c *gin.Context) {
 	inspector := asynq.NewInspector(redisOpt)
 	defer inspector.Close()
 
-	resp, err := waitForResult(context.Background(), inspector, queue, uuid)
+	resp, err := waitForResult(c.Request.Context(), inspector, queue, uuid)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
+		c.JSON(http.StatusRequestTimeout, models.APIErrorResponse{Errors: []string{err.Error()}})
 		return
 	}
 
@@ -171,7 +189,7 @@ func AddTask(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFunc {
         var payloadToSend interface{}
 
 		// Validate payload against YAML schema for this queue if available
-		yamls, err := queueworker.LoadAll(qwConfigDir)
+		yamls, err := queueworker.LoadAllCached(qwConfigDir)
 		if err == nil && len(yamls) > 0 {
 			var matched *queueworker.QueueYAML
 			// Try to find the queue by matching runtime config names
@@ -233,8 +251,26 @@ func AddTask(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFunc {
 			}
 		}
 
-		asynqClient := c.Keys["client"].(*asynq.Client)
-		rdb := c.Keys["rdb"].(*redis.Client)
+		asynqClientVal, ok := c.Get("client")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"asynq client not available"}})
+			return
+		}
+		asynqClient, ok := asynqClientVal.(*asynq.Client)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid asynq client type"}})
+			return
+		}
+		rdbVal, ok := c.Get("rdb")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis client not available"}})
+			return
+		}
+		rdb, ok := rdbVal.(*redis.Client)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis client type"}})
+			return
+		}
 
 		info, err := _client.EnqueueGenericTask(asynqClient, rdb, query.Queue, query.Timeout, payloadToSend)
 		if err != nil {
@@ -271,6 +307,9 @@ func AddTask(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFunc {
 func waitForResult(ctx context.Context, i *asynq.Inspector, queue, taskID string) (*asynq.TaskInfo, error) {
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
+
+	timeout := time.After(30 * time.Second)
+
 	for {
 		select {
 		case <-t.C:
@@ -278,10 +317,12 @@ func waitForResult(ctx context.Context, i *asynq.Inspector, queue, taskID string
 			if err != nil {
 				return nil, err
 			}
-			if taskInfo.LastErr != "" {
+			if taskInfo.State == asynq.TaskStateCompleted || taskInfo.State == asynq.TaskStateArchived {
 				return taskInfo, nil
 			}
-			return taskInfo, nil
+			// Continue polling for non-terminal states
+		case <-timeout:
+			return nil, fmt.Errorf("timeout waiting for task result")
 		case <-ctx.Done():
 			return nil, fmt.Errorf("context closed")
 		}
@@ -307,6 +348,24 @@ func checkAllowedType(v interface{}, allowed []string) bool {
 		return contains(allowed, "object")
 	default:
 		return false
+	}
+}
+
+// describeType returns a human-readable type name for a JSON value
+func describeType(v interface{}) string {
+	switch v.(type) {
+	case string:
+		return "string"
+	case bool:
+		return "bool"
+	case float64:
+		return "number"
+	case []interface{}:
+		return "array"
+	case map[string]interface{}:
+		return "object"
+	default:
+		return fmt.Sprintf("%T", v)
 	}
 }
 
@@ -352,7 +411,7 @@ func validateFields(dataMap map[string]interface{}, fields []queueworker.FieldSc
 
 		// Validate type
 		if !checkAllowedType(val, field.Type) {
-			return nil, fmt.Errorf("%s has invalid type", field.Name)
+			return nil, fmt.Errorf("field '%s' has type %s, expected one of: %s", field.Name, describeType(val), strings.Join(field.Type, ", "))
 		}
 
 		// Convert float64 -> int64 for int-typed fields

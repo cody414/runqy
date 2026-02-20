@@ -1,9 +1,11 @@
 package api
 
 import (
+	"errors"
 	"log"
 	"net/http"
 
+	"github.com/Publikey/runqy/models"
 	"github.com/Publikey/runqy/vaults"
 	"github.com/gin-gonic/gin"
 )
@@ -30,8 +32,8 @@ type SetEntryRequest struct {
 // checkVaultsEnabled returns an error response if vaults are disabled
 func checkVaultsEnabled(c *gin.Context, store *vaults.Store) bool {
 	if !store.IsEnabled() {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "vaults not configured: RUNQY_VAULT_MASTER_KEY not set",
+		c.JSON(http.StatusServiceUnavailable, models.APIErrorResponse{
+			Errors: []string{"vaults not enabled. Set RUNQY_VAULT_MASTER_KEY environment variable. Generate a key with: openssl rand -base64 32"},
 		})
 		return false
 	}
@@ -54,7 +56,7 @@ func ListVaults(store *vaults.Store) gin.HandlerFunc {
 
 		summaries, err := store.ListVaults(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -85,24 +87,24 @@ func CreateVault(store *vaults.Store) gin.HandlerFunc {
 
 		var req CreateVaultRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
 		// Check if vault already exists
 		exists, err := store.VaultExists(c.Request.Context(), req.Name)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 		if exists {
-			c.JSON(http.StatusConflict, gin.H{"error": "vault already exists"})
+			c.JSON(http.StatusConflict, models.APIErrorResponse{Errors: []string{"vault already exists"}})
 			return
 		}
 
 		vault, err := store.CreateVault(c.Request.Context(), req.Name, req.Description)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -136,11 +138,11 @@ func GetVault(store *vaults.Store) gin.HandlerFunc {
 		name := c.Param("name")
 		detail, err := store.GetVaultDetail(c.Request.Context(), name)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 		if detail == nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "vault not found"})
+			c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"vault not found"}})
 			return
 		}
 
@@ -169,16 +171,16 @@ func DeleteVault(store *vaults.Store) gin.HandlerFunc {
 		// Check if vault exists
 		exists, err := store.VaultExists(c.Request.Context(), name)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 		if !exists {
-			c.JSON(http.StatusNotFound, gin.H{"error": "vault not found"})
+			c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"vault not found"}})
 			return
 		}
 
 		if err := store.DeleteVault(c.Request.Context(), name); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -210,7 +212,7 @@ func SetEntry(store *vaults.Store) gin.HandlerFunc {
 
 		var req SetEntryRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -221,11 +223,11 @@ func SetEntry(store *vaults.Store) gin.HandlerFunc {
 		}
 
 		if err := store.SetEntry(c.Request.Context(), vaultName, req.Key, req.Value, isSecret); err != nil {
-			if err.Error() == "vault '"+vaultName+"' not found" {
-				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			if errors.Is(err, vaults.ErrVaultNotFound) {
+				c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -254,11 +256,11 @@ func ListEntries(store *vaults.Store) gin.HandlerFunc {
 
 		entries, err := store.ListEntries(c.Request.Context(), vaultName)
 		if err != nil {
-			if err.Error() == "vault '"+vaultName+"' not found" {
-				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			if errors.Is(err, vaults.ErrVaultNotFound) {
+				c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -290,12 +292,11 @@ func DeleteEntry(store *vaults.Store) gin.HandlerFunc {
 		key := c.Param("key")
 
 		if err := store.DeleteEntry(c.Request.Context(), vaultName, key); err != nil {
-			if err.Error() == "vault '"+vaultName+"' not found" ||
-				err.Error() == "key '"+key+"' not found in vault '"+vaultName+"'" {
-				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			if errors.Is(err, vaults.ErrVaultNotFound) || errors.Is(err, vaults.ErrEntryNotFound) {
+				c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 

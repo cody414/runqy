@@ -4,9 +4,52 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
+
+// yamlCache caches the result of LoadAll to avoid re-reading disk on every request.
+var yamlCache struct {
+	mu      sync.RWMutex
+	dir     string
+	configs []*QueueWorkersYAML
+	loaded  bool
+}
+
+// LoadAllCached returns cached YAML configs, loading from disk on first call.
+// Use InvalidateYAMLCache() to force a reload (e.g., on hot-reload).
+func LoadAllCached(dir string) ([]*QueueWorkersYAML, error) {
+	yamlCache.mu.RLock()
+	if yamlCache.loaded && yamlCache.dir == dir {
+		configs := yamlCache.configs
+		yamlCache.mu.RUnlock()
+		return configs, nil
+	}
+	yamlCache.mu.RUnlock()
+
+	// Cache miss — load from disk
+	configs, err := LoadAll(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	yamlCache.mu.Lock()
+	yamlCache.dir = dir
+	yamlCache.configs = configs
+	yamlCache.loaded = true
+	yamlCache.mu.Unlock()
+
+	return configs, nil
+}
+
+// InvalidateYAMLCache clears the cache so the next LoadAllCached call re-reads disk.
+func InvalidateYAMLCache() {
+	yamlCache.mu.Lock()
+	yamlCache.loaded = false
+	yamlCache.configs = nil
+	yamlCache.mu.Unlock()
+}
 
 // LoadAll loads all YAML files from the specified directory
 func LoadAll(dir string) ([]*QueueWorkersYAML, error) {

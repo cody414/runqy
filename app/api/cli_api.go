@@ -1,10 +1,12 @@
 package api
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/Publikey/runqy/models"
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
@@ -25,7 +27,8 @@ type QueueInfoResponse struct {
 
 // QueueListResponse is the response for listing queues
 type QueueListResponse struct {
-	Queues []QueueInfoResponse `json:"queues"`
+	Queues   []QueueInfoResponse `json:"queues"`
+	Warnings []string            `json:"warnings,omitempty"`
 }
 
 // TaskInfoResponse represents task information for CLI
@@ -83,14 +86,16 @@ func listQueuesHandler(inspector *asynq.Inspector, store *queueworker.Store) gin
 
 		queues, err := inspector.Queues()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
 		var result []QueueInfoResponse
+		var warnings []string
 		for _, queueName := range queues {
 			info, err := inspector.GetQueueInfo(queueName)
 			if err != nil {
+				warnings = append(warnings, fmt.Sprintf("failed to get info for queue '%s': %v", queueName, err))
 				continue
 			}
 
@@ -107,7 +112,7 @@ func listQueuesHandler(inspector *asynq.Inspector, store *queueworker.Store) gin
 			})
 		}
 
-		c.JSON(http.StatusOK, QueueListResponse{Queues: result})
+		c.JSON(http.StatusOK, QueueListResponse{Queues: result, Warnings: warnings})
 	}
 }
 
@@ -117,7 +122,7 @@ func getQueueHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 
 		info, err := inspector.GetQueueInfo(queueName)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -140,7 +145,7 @@ func pauseQueueHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		queueName := c.Param("queue")
 
 		if err := inspector.PauseQueue(queueName); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -153,7 +158,7 @@ func unpauseQueueHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		queueName := c.Param("queue")
 
 		if err := inspector.UnpauseQueue(queueName); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -178,7 +183,7 @@ func listTasksHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		case "pending":
 			taskList, err := inspector.ListPendingTasks(queueName, asynq.PageSize(limit))
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
 			for _, t := range taskList {
@@ -196,7 +201,7 @@ func listTasksHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		case "active":
 			taskList, err := inspector.ListActiveTasks(queueName, asynq.PageSize(limit))
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
 			for _, t := range taskList {
@@ -214,7 +219,7 @@ func listTasksHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		case "scheduled":
 			taskList, err := inspector.ListScheduledTasks(queueName, asynq.PageSize(limit))
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
 			for _, t := range taskList {
@@ -233,7 +238,7 @@ func listTasksHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		case "retry":
 			taskList, err := inspector.ListRetryTasks(queueName, asynq.PageSize(limit))
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
 			for _, t := range taskList {
@@ -253,7 +258,7 @@ func listTasksHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		case "archived":
 			taskList, err := inspector.ListArchivedTasks(queueName, asynq.PageSize(limit))
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
 			for _, t := range taskList {
@@ -272,7 +277,7 @@ func listTasksHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		case "completed":
 			taskList, err := inspector.ListCompletedTasks(queueName, asynq.PageSize(limit))
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
 			for _, t := range taskList {
@@ -290,7 +295,7 @@ func listTasksHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 			}
 
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid state: " + state})
+			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"invalid state: " + state}})
 			return
 		}
 
@@ -305,7 +310,7 @@ func getTaskHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 
 		info, err := inspector.GetTaskInfo(queueName, taskID)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -344,7 +349,7 @@ func deleteTaskHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		taskID := c.Param("task_id")
 
 		if err := inspector.DeleteTask(queueName, taskID); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -357,7 +362,7 @@ func cancelTaskHandler(inspector *asynq.Inspector) gin.HandlerFunc {
 		taskID := c.Param("task_id")
 
 		if err := inspector.CancelProcessing(taskID); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 			return
 		}
 
@@ -375,10 +380,10 @@ func deleteQueueHandler(inspector *asynq.Inspector, store *queueworker.Store) gi
 			// Ignore "queue not found" in Redis - it might only exist in DB
 			if err != asynq.ErrQueueNotFound {
 				if err == asynq.ErrQueueNotEmpty {
-					c.JSON(http.StatusBadRequest, gin.H{"error": "queue is not empty - use force=true to delete anyway"})
+					c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"queue is not empty - use force=true to delete anyway"}})
 					return
 				}
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
 				return
 			}
 		}

@@ -157,7 +157,7 @@ func runVaultList(cmd *cobra.Command, args []string) error {
 	}
 
 	if !store.IsEnabled() {
-		return fmt.Errorf("vaults not configured: RUNQY_VAULT_MASTER_KEY not set")
+		return fmt.Errorf("vaults not enabled. Set RUNQY_VAULT_MASTER_KEY environment variable.\n  Generate a key with: openssl rand -base64 32")
 	}
 
 	summaries, err := store.ListVaults(context.Background())
@@ -214,6 +214,9 @@ func runVaultListRemote() error {
 }
 
 func runVaultCreate(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "vault name"); err != nil {
+		return err
+	}
 	name := args[0]
 
 	// Remote mode: use API client
@@ -233,7 +236,7 @@ func runVaultCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	if !store.IsEnabled() {
-		return fmt.Errorf("vaults not configured: RUNQY_VAULT_MASTER_KEY not set")
+		return fmt.Errorf("vaults not enabled. Set RUNQY_VAULT_MASTER_KEY environment variable.\n  Generate a key with: openssl rand -base64 32")
 	}
 
 	// Check if vault already exists
@@ -255,6 +258,9 @@ func runVaultCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runVaultShow(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "vault name"); err != nil {
+		return err
+	}
 	name := args[0]
 
 	// Remote mode: use API client
@@ -269,7 +275,7 @@ func runVaultShow(cmd *cobra.Command, args []string) error {
 	}
 
 	if !store.IsEnabled() {
-		return fmt.Errorf("vaults not configured: RUNQY_VAULT_MASTER_KEY not set")
+		return fmt.Errorf("vaults not enabled. Set RUNQY_VAULT_MASTER_KEY environment variable.\n  Generate a key with: openssl rand -base64 32")
 	}
 
 	detail, err := store.GetVaultDetail(context.Background(), name)
@@ -347,6 +353,9 @@ func runVaultShowRemote(name string) error {
 }
 
 func runVaultDelete(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "vault name"); err != nil {
+		return err
+	}
 	name := args[0]
 
 	if !vaultForce {
@@ -376,7 +385,7 @@ func runVaultDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if !store.IsEnabled() {
-		return fmt.Errorf("vaults not configured: RUNQY_VAULT_MASTER_KEY not set")
+		return fmt.Errorf("vaults not enabled. Set RUNQY_VAULT_MASTER_KEY environment variable.\n  Generate a key with: openssl rand -base64 32")
 	}
 
 	if err := store.DeleteVault(context.Background(), name); err != nil {
@@ -388,6 +397,9 @@ func runVaultDelete(cmd *cobra.Command, args []string) error {
 }
 
 func runVaultSet(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "vault name", "key", "value"); err != nil {
+		return err
+	}
 	vaultName := args[0]
 	key := args[1]
 	value := args[2]
@@ -411,7 +423,7 @@ func runVaultSet(cmd *cobra.Command, args []string) error {
 	}
 
 	if !store.IsEnabled() {
-		return fmt.Errorf("vaults not configured: RUNQY_VAULT_MASTER_KEY not set")
+		return fmt.Errorf("vaults not enabled. Set RUNQY_VAULT_MASTER_KEY environment variable.\n  Generate a key with: openssl rand -base64 32")
 	}
 
 	if err := store.SetEntry(context.Background(), vaultName, key, value, isSecret); err != nil {
@@ -423,6 +435,9 @@ func runVaultSet(cmd *cobra.Command, args []string) error {
 }
 
 func runVaultGet(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "vault name", "key"); err != nil {
+		return err
+	}
 	vaultName := args[0]
 	key := args[1]
 
@@ -438,7 +453,7 @@ func runVaultGet(cmd *cobra.Command, args []string) error {
 	}
 
 	if !store.IsEnabled() {
-		return fmt.Errorf("vaults not configured: RUNQY_VAULT_MASTER_KEY not set")
+		return fmt.Errorf("vaults not enabled. Set RUNQY_VAULT_MASTER_KEY environment variable.\n  Generate a key with: openssl rand -base64 32")
 	}
 
 	value, _, err := store.GetEntry(context.Background(), vaultName, key)
@@ -451,6 +466,9 @@ func runVaultGet(cmd *cobra.Command, args []string) error {
 }
 
 func runVaultUnset(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "vault name", "key"); err != nil {
+		return err
+	}
 	vaultName := args[0]
 	key := args[1]
 
@@ -471,7 +489,7 @@ func runVaultUnset(cmd *cobra.Command, args []string) error {
 	}
 
 	if !store.IsEnabled() {
-		return fmt.Errorf("vaults not configured: RUNQY_VAULT_MASTER_KEY not set")
+		return fmt.Errorf("vaults not enabled. Set RUNQY_VAULT_MASTER_KEY environment variable.\n  Generate a key with: openssl rand -base64 32")
 	}
 
 	if err := store.DeleteEntry(context.Background(), vaultName, key); err != nil {
@@ -483,6 +501,9 @@ func runVaultUnset(cmd *cobra.Command, args []string) error {
 }
 
 func runVaultEntries(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "vault name"); err != nil {
+		return err
+	}
 	vaultName := args[0]
 
 	// Remote mode: use API client
@@ -497,7 +518,7 @@ func runVaultEntries(cmd *cobra.Command, args []string) error {
 	}
 
 	if !store.IsEnabled() {
-		return fmt.Errorf("vaults not configured: RUNQY_VAULT_MASTER_KEY not set")
+		return fmt.Errorf("vaults not enabled. Set RUNQY_VAULT_MASTER_KEY environment variable.\n  Generate a key with: openssl rand -base64 32")
 	}
 
 	entries, err := store.ListEntries(context.Background(), vaultName)

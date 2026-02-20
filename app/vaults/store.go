@@ -3,10 +3,49 @@ package vaults
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+)
+
+var (
+	// ErrVaultNotFound is returned when a vault does not exist.
+	ErrVaultNotFound = errors.New("vault not found")
+
+	// ErrEntryNotFound is returned when a vault entry does not exist.
+	ErrEntryNotFound = errors.New("entry not found")
+)
+
+var (
+	// validKeyName matches environment-variable-safe key names
+	validKeyName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+	// validVaultName matches safe vault names (alphanumeric, hyphens, underscores)
+	validVaultName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
+
+	// reservedKeyNames are names that must not be overridden via vaults
+	reservedKeyNames = map[string]bool{
+		"PATH":        true,
+		"HOME":        true,
+		"VIRTUAL_ENV": true,
+		"PYTHONPATH":  true,
+	}
+
+	// reservedVaultNames are names that could cause confusion with system variables
+	reservedVaultNames = map[string]bool{
+		"PATH":        true,
+		"HOME":        true,
+		"VIRTUAL_ENV": true,
+		"PYTHONPATH":  true,
+		"USER":        true,
+		"SHELL":       true,
+		"PWD":         true,
+		"TMPDIR":      true,
+	}
 )
 
 // Store handles vault persistence to the database.
@@ -34,6 +73,16 @@ func (s *Store) IsEnabled() bool {
 func (s *Store) CreateVault(ctx context.Context, name, description string) (*Vault, error) {
 	if !s.encryptor.IsEnabled() {
 		return nil, ErrVaultsDisabled
+	}
+
+	if name == "" {
+		return nil, fmt.Errorf("vault name cannot be empty")
+	}
+	if !validVaultName.MatchString(name) {
+		return nil, fmt.Errorf("invalid vault name %q: must start with a letter or digit, contain only alphanumeric, hyphens, underscores (max 64 chars)", name)
+	}
+	if reservedVaultNames[strings.ToUpper(name)] {
+		return nil, fmt.Errorf("reserved vault name %q: cannot use system variable names", name)
 	}
 
 	now := time.Now()
@@ -160,7 +209,7 @@ func (s *Store) DeleteVault(ctx context.Context, name string) error {
 		return err
 	}
 	if vault == nil {
-		return fmt.Errorf("vault '%s' not found", name)
+		return fmt.Errorf("vault '%s': %w", name, ErrVaultNotFound)
 	}
 
 	// Delete entries first (foreign key)
@@ -205,10 +254,25 @@ func (s *Store) VaultExists(ctx context.Context, name string) (bool, error) {
 
 // --- Vault Entry CRUD ---
 
+// ValidateKeyName checks that a vault key name is safe for use as an environment variable.
+func ValidateKeyName(key string) error {
+	if !validKeyName.MatchString(key) {
+		return fmt.Errorf("invalid key name %q: must match [A-Za-z_][A-Za-z0-9_]*", key)
+	}
+	if reservedKeyNames[strings.ToUpper(key)] {
+		return fmt.Errorf("reserved key name %q: cannot override system variables (PATH, HOME, VIRTUAL_ENV, PYTHONPATH)", key)
+	}
+	return nil
+}
+
 // SetEntry sets a key-value pair in a vault (creates or updates).
 func (s *Store) SetEntry(ctx context.Context, vaultName, key, value string, isSecret bool) error {
 	if !s.encryptor.IsEnabled() {
 		return ErrVaultsDisabled
+	}
+
+	if err := ValidateKeyName(key); err != nil {
+		return err
 	}
 
 	vault, err := s.GetVault(ctx, vaultName)
@@ -216,7 +280,7 @@ func (s *Store) SetEntry(ctx context.Context, vaultName, key, value string, isSe
 		return err
 	}
 	if vault == nil {
-		return fmt.Errorf("vault '%s' not found", vaultName)
+		return fmt.Errorf("vault '%s': %w", vaultName, ErrVaultNotFound)
 	}
 
 	// Encrypt the value
@@ -282,7 +346,7 @@ func (s *Store) GetEntry(ctx context.Context, vaultName, key string) (string, bo
 		return "", false, err
 	}
 	if vault == nil {
-		return "", false, fmt.Errorf("vault '%s' not found", vaultName)
+		return "", false, fmt.Errorf("vault '%s': %w", vaultName, ErrVaultNotFound)
 	}
 
 	entry, err := s.getEntry(ctx, vault.ID, key)
@@ -290,7 +354,7 @@ func (s *Store) GetEntry(ctx context.Context, vaultName, key string) (string, bo
 		return "", false, err
 	}
 	if entry == nil {
-		return "", false, fmt.Errorf("key '%s' not found in vault '%s'", key, vaultName)
+		return "", false, fmt.Errorf("key '%s' in vault '%s': %w", key, vaultName, ErrEntryNotFound)
 	}
 
 	value, err := s.encryptor.DecryptString(entry.Value)
@@ -335,7 +399,7 @@ func (s *Store) DeleteEntry(ctx context.Context, vaultName, key string) error {
 		return err
 	}
 	if vault == nil {
-		return fmt.Errorf("vault '%s' not found", vaultName)
+		return fmt.Errorf("vault '%s': %w", vaultName, ErrVaultNotFound)
 	}
 
 	var query string
@@ -352,7 +416,7 @@ func (s *Store) DeleteEntry(ctx context.Context, vaultName, key string) error {
 
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return fmt.Errorf("key '%s' not found in vault '%s'", key, vaultName)
+		return fmt.Errorf("key '%s' in vault '%s': %w", key, vaultName, ErrEntryNotFound)
 	}
 
 	return nil
@@ -369,7 +433,7 @@ func (s *Store) ListEntries(ctx context.Context, vaultName string) ([]VaultEntry
 		return nil, err
 	}
 	if vault == nil {
-		return nil, fmt.Errorf("vault '%s' not found", vaultName)
+		return nil, fmt.Errorf("vault '%s': %w", vaultName, ErrVaultNotFound)
 	}
 
 	var entries []VaultEntry
@@ -444,7 +508,7 @@ func (s *Store) GetVaultData(ctx context.Context, vaultName string) (VaultData, 
 		return nil, err
 	}
 	if vault == nil {
-		return nil, fmt.Errorf("vault '%s' not found", vaultName)
+		return nil, fmt.Errorf("vault '%s': %w", vaultName, ErrVaultNotFound)
 	}
 
 	var entries []VaultEntry

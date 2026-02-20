@@ -1,8 +1,8 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -75,9 +75,27 @@ func AddTaskBatch(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFun
 			timeout = 30
 		}
 
-		// Get asynq client and redis client
-		asynqClient := c.Keys["client"].(*asynq.Client)
-		rdb := c.Keys["rdb"].(*redis.Client)
+		// Get asynq client and redis client (safe assertions)
+		asynqClientVal, ok := c.Get("client")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"asynq client not available"}})
+			return
+		}
+		asynqClient, ok := asynqClientVal.(*asynq.Client)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid asynq client type"}})
+			return
+		}
+		rdbVal, ok := c.Get("rdb")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"Redis client not available"}})
+			return
+		}
+		rdb, ok := rdbVal.(*redis.Client)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"invalid Redis client type"}})
+			return
+		}
 
 		// Prepare batch
 		response := BatchTaskResponse{
@@ -86,7 +104,7 @@ func AddTaskBatch(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFun
 		}
 
 		// Use Redis pipeline for batch operations
-		ctx := context.Background()
+		ctx := c.Request.Context()
 		pipe := rdb.Pipeline()
 
 		// Collect task infos for the response
@@ -131,7 +149,9 @@ func AddTaskBatch(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFun
 
 			// Flush pipeline every 100 jobs to prevent memory buildup
 			if (i+1)%100 == 0 {
-				pipe.Exec(ctx)
+				if _, err := pipe.Exec(ctx); err != nil {
+					response.Errors = append(response.Errors, fmt.Sprintf("pipeline flush error at job %d: %v", i+1, err))
+				}
 				pipe = rdb.Pipeline()
 			}
 		}
@@ -139,109 +159,12 @@ func AddTaskBatch(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFun
 		// Execute remaining pipeline commands
 		if len(taskEntries) > 0 {
 			pipe.SAdd(ctx, "asynq:queues", queue)
-			pipe.Exec(ctx)
+			if _, err := pipe.Exec(ctx); err != nil {
+				response.Errors = append(response.Errors, fmt.Sprintf("final pipeline error: %v", err))
+			}
 		}
 
 		c.JSON(http.StatusOK, response)
 	}
 }
 
-// AddTaskBatchDirect is an optimized version that bypasses asynq client
-// and writes directly to Redis using pipelining for maximum throughput.
-// Use this when you need absolute maximum performance and can accept
-// slightly reduced feature set (no per-job options).
-func AddTaskBatchDirect(qwConfigDir string, qwStore *queueworker.Store) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req BatchTaskRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{err.Error()}})
-			return
-		}
-
-		if len(req.Jobs) == 0 {
-			c.JSON(http.StatusBadRequest, models.APIErrorResponse{Errors: []string{"jobs array cannot be empty"}})
-			return
-		}
-
-		// Normalize queue name
-		queue := queueworker.NormalizeQueueName(req.Queue)
-
-		// Validate queue exists in database
-		exists, err := qwStore.Exists(c.Request.Context(), queue)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{"failed to check queue: " + err.Error()}})
-			return
-		}
-		if !exists {
-			c.JSON(http.StatusNotFound, models.APIErrorResponse{Errors: []string{"queue not found: " + queue}})
-			return
-		}
-
-		// Get redis client
-		rdb := c.Keys["rdb"].(*redis.Client)
-		ctx := context.Background()
-
-		response := BatchTaskResponse{
-			TaskIDs: make([]string, 0, len(req.Jobs)),
-			Errors:  make([]string, 0),
-		}
-
-		// Prepare all tasks first
-		var taskMsgs []interface{}
-		pendingKey := "asynq:{" + queue + "}:pending"
-
-		pipe := rdb.Pipeline()
-
-		for _, jobData := range req.Jobs {
-			payload := json.RawMessage(jobData)
-
-			task, err := t.NewGenericTask(queue, payload)
-			if err != nil {
-				response.Failed++
-				response.Errors = append(response.Errors, err.Error())
-				continue
-			}
-
-			// Serialize task for Redis
-			taskMsg, err := serializeAsynqTask(task, queue)
-			if err != nil {
-				response.Failed++
-				response.Errors = append(response.Errors, err.Error())
-				continue
-			}
-
-			taskMsgs = append(taskMsgs, taskMsg)
-			response.TaskIDs = append(response.TaskIDs, task.ResultWriter().TaskID())
-			response.Enqueued++
-
-			// Store metadata
-			pipe.HSet(ctx, "asynq:t:"+task.ResultWriter().TaskID(), "queue", queue)
-		}
-
-		// Bulk LPUSH all tasks
-		if len(taskMsgs) > 0 {
-			rdb.LPush(ctx, pendingKey, taskMsgs...)
-			pipe.SAdd(ctx, "asynq:queues", queue)
-			pipe.Exec(ctx)
-		}
-
-		c.JSON(http.StatusOK, response)
-	}
-}
-
-// serializeAsynqTask converts an asynq.Task to the wire format used by asynq
-// This is a simplified version - for full compatibility, use asynq.Client
-func serializeAsynqTask(task *asynq.Task, queue string) ([]byte, error) {
-	// asynq uses a specific protobuf/msgpack format
-	// For now, we use JSON as a placeholder
-	// TODO: Use proper asynq internal format
-	msg := map[string]interface{}{
-		"type":     task.Type(),
-		"payload":  task.Payload(),
-		"queue":    queue,
-		"retry":    3,
-		"timeout":  30,
-		"deadline": time.Now().Add(time.Hour).Unix(),
-	}
-	return json.Marshal(msg)
-}

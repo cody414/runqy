@@ -108,6 +108,11 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	cfg := GetConfig()
 
+	// Warn if API key is not configured
+	if cfg.APIKey == "" {
+		log.Println("WARNING: RUNQY_API_KEY is not set. API endpoints will reject all requests.")
+	}
+
 	// Override config from CLI flags
 	if configDir != "" {
 		cfg.QueueWorkersDir = configDir
@@ -124,7 +129,10 @@ func runServe(cmd *cobra.Command, args []string) {
 	if cloneDir != "" {
 		cfg.ConfigCloneDir = cloneDir
 	}
-	if watchInterval > 0 {
+	if cmd.Flags().Changed("watch-interval") {
+		if watchInterval <= 0 {
+			log.Fatalf("--watch-interval must be positive, got %d", watchInterval)
+		}
 		cfg.ConfigWatchInterval = watchInterval
 	}
 	if useSQLite {
@@ -181,6 +189,16 @@ func runServe(cmd *cobra.Command, args []string) {
 	}
 	router.Use(cors.Default())
 
+	// Body size limit middleware
+	maxBodySize := cfg.MaxBodySize
+	if maxBodySize <= 0 {
+		maxBodySize = 50 * 1024 * 1024 // 50MB default
+	}
+	router.Use(func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBodySize)
+		c.Next()
+	})
+
 	redisAddr, err := models.BuildRedisConns(cfg)
 	if err != nil {
 		log.Fatalf("Redis connection failed: %v", err)
@@ -229,25 +247,36 @@ func runServe(cmd *cobra.Command, args []string) {
 	})
 
 	// Initialize encryption and JWT from centralized config
-	vaults.InitEncryptor(cfg.VaultMasterKey)
+	_, vaultInitResult := vaults.InitEncryptor(cfg.VaultMasterKey)
 	auth.InitJWTManager(cfg.JWTSecret)
 
 	// Initialize vault store
 	vaultStore := vaults.NewStore(db)
 	startupCfg.VaultsEnabled = vaultStore.IsEnabled()
-	if debugMode {
-		if vaultStore.IsEnabled() {
+
+	switch vaultInitResult {
+	case vaults.InitOK:
+		if debugMode {
 			log.Println("[VAULTS] Vaults feature enabled")
-		} else {
+		}
+	case vaults.InitNotSet:
+		if debugMode {
 			log.Println("[VAULTS] Warning: RUNQY_VAULT_MASTER_KEY not set, vaults feature disabled")
 		}
+	case vaults.InitInvalidKey:
+		log.Println("[VAULTS] Error: RUNQY_VAULT_MASTER_KEY is set but has invalid format (expected base64-encoded 32-byte key). Vaults feature disabled.")
+		log.Println("[VAULTS] Hint: generate a valid key with: openssl rand -base64 32")
 	}
 
 	// Register asynq metrics exporter for Prometheus
 	inspector := asynq.NewInspector(redisAddr.AsynqOpt)
 	defer inspector.Close()
 	metricsExporter := metrics.NewQueueMetricsCollector(inspector)
-	prometheus.MustRegister(metricsExporter)
+	if err := prometheus.Register(metricsExporter); err != nil {
+		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+			log.Fatalf("Failed to register metrics exporter: %v", err)
+		}
+	}
 	if debugMode {
 		log.Println("[METRICS] Prometheus metrics exporter registered at /metrics")
 	}
@@ -263,7 +292,8 @@ func runServe(cmd *cobra.Command, args []string) {
 			log.Println("[AUTH] Monitoring UI authentication enabled")
 		}
 
-		h = monitoring.New(monitoring.Options{
+		var monErr error
+		h, monErr = monitoring.New(monitoring.Options{
 			RootPath:          "/monitoring",
 			RedisConnOpt:      redisAddr.AsynqOpt,
 			ReadOnly:          cfg.ReadOnly,
@@ -274,6 +304,9 @@ func runServe(cmd *cobra.Command, args []string) {
 			PrometheusAddress: cfg.PrometheusAddress,
 			Config:            cfg,
 		})
+		if monErr != nil {
+			log.Fatalf("Failed to initialize monitoring UI: %v", monErr)
+		}
 		defer h.Close()
 	} else if debugMode {
 		log.Println("[UI] Monitoring dashboard disabled (--no-ui)")
@@ -397,10 +430,13 @@ func runServe(cmd *cobra.Command, args []string) {
 		router.Any("/monitoring/*a", gin.WrapH(h))
 	}
 
-	// Create HTTP server
+	// Create HTTP server with production-ready timeouts
 	srv := &http.Server{
-		Addr:    ":" + cfg.HTTPPort,
-		Handler: router,
+		Addr:         ":" + cfg.HTTPPort,
+		Handler:      router,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Handle OS shutdown signals
@@ -422,12 +458,21 @@ func runServe(cmd *cobra.Command, args []string) {
 	sig := <-quit
 	log.Printf("Received %v, shutting down...", sig)
 
-	// Stop watchers
-	if configWatcher != nil {
-		configWatcher.Stop()
-	}
-	if gitWatcher != nil {
-		gitWatcher.Stop()
+	// Stop watchers with timeout to prevent blocking forever
+	watcherDone := make(chan struct{})
+	go func() {
+		if configWatcher != nil {
+			configWatcher.Stop()
+		}
+		if gitWatcher != nil {
+			gitWatcher.Stop()
+		}
+		close(watcherDone)
+	}()
+	select {
+	case <-watcherDone:
+	case <-time.After(5 * time.Second):
+		log.Println("Warning: watchers did not stop within 5s timeout")
 	}
 
 	// Graceful shutdown of HTTP server

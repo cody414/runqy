@@ -189,6 +189,9 @@ func runWorkerListRemote() error {
 }
 
 func runWorkerInfo(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "worker ID"); err != nil {
+		return err
+	}
 	workerID := args[0]
 
 	// Remote mode: use API client

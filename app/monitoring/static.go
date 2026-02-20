@@ -33,13 +33,13 @@ func (h *uiAssetsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Get the path relative to the root path.
 	if !strings.HasPrefix(cleanPath, h.rootPath) {
-		http.Error(w, "unexpected path prefix", http.StatusBadRequest)
+		writeJSONError(w, "unexpected path prefix", http.StatusBadRequest)
 		return
 	}
 	cleanPath = strings.TrimPrefix(cleanPath, h.rootPath)
 
 	if code, err := h.serveFile(w, cleanPath); err != nil {
-		http.Error(w, err.Error(), code)
+		writeJSONError(w, err.Error(), code)
 		return
 	}
 }

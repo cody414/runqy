@@ -187,6 +187,9 @@ func runQueueListRemote() error {
 }
 
 func runQueueInspect(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "queue name"); err != nil {
+		return err
+	}
 	queueName := args[0]
 
 	// Remote mode: use API client
@@ -265,6 +268,9 @@ func runQueueInspectRemote(queueName string) error {
 }
 
 func runQueuePause(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "queue name"); err != nil {
+		return err
+	}
 	queueName := args[0]
 
 	// Remote mode: use API client
@@ -293,6 +299,9 @@ func runQueuePause(cmd *cobra.Command, args []string) error {
 }
 
 func runQueueUnpause(cmd *cobra.Command, args []string) error {
+	if err := validateArgs(args, "queue name"); err != nil {
+		return err
+	}
 	queueName := args[0]
 
 	// Remote mode: use API client

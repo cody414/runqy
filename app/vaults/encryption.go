@@ -8,8 +8,21 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"sync"
+)
+
+// InitResult indicates the outcome of vault master key initialization.
+type InitResult int
+
+const (
+	// InitOK means the key was valid and vaults are enabled.
+	InitOK InitResult = iota
+	// InitNotSet means the environment variable was empty or missing.
+	InitNotSet
+	// InitInvalidKey means the environment variable was set but had an invalid format.
+	InitInvalidKey
 )
 
 const (
@@ -22,7 +35,7 @@ const (
 
 var (
 	// ErrVaultsDisabled is returned when the master key is not configured.
-	ErrVaultsDisabled = errors.New("vaults not configured: RUNQY_VAULT_MASTER_KEY not set")
+	ErrVaultsDisabled = errors.New("vaults not enabled: RUNQY_VAULT_MASTER_KEY not set")
 
 	// ErrInvalidKey is returned when the master key has an invalid format.
 	ErrInvalidKey = errors.New("invalid master key: must be 32 bytes (256 bits) base64-encoded")
@@ -56,22 +69,27 @@ func GetEncryptor() *Encryptor {
 
 // InitEncryptor creates and sets the global Encryptor using the provided master key.
 // This should be called during server startup with the key from config.
-func InitEncryptor(masterKey string) *Encryptor {
+// Returns the Encryptor and an InitResult indicating the outcome.
+func InitEncryptor(masterKey string) (*Encryptor, InitResult) {
+	var result InitResult
 	once.Do(func() {
 		globalEncryptor = &Encryptor{}
 		if masterKey == "" {
 			globalEncryptor.enabled = false
+			result = InitNotSet
 			return
 		}
 		key, err := base64.StdEncoding.DecodeString(masterKey)
 		if err != nil || len(key) != keyLength {
 			globalEncryptor.enabled = false
+			result = InitInvalidKey
 			return
 		}
 		globalEncryptor.key = key
 		globalEncryptor.enabled = true
+		result = InitOK
 	})
-	return globalEncryptor
+	return globalEncryptor, result
 }
 
 // initFromEnv initializes the encryptor from the environment variable.
@@ -85,6 +103,8 @@ func (e *Encryptor) initFromEnv() {
 	key, err := base64.StdEncoding.DecodeString(keyStr)
 	if err != nil || len(key) != keyLength {
 		e.enabled = false
+		log.Println("[VAULTS] Error: RUNQY_VAULT_MASTER_KEY is set but has invalid format (expected base64-encoded 32-byte key). Vaults feature disabled.")
+		log.Println("[VAULTS] Hint: generate a valid key with: openssl rand -base64 32")
 		return
 	}
 

@@ -44,6 +44,9 @@ type Config struct {
 	JWTSecret      string
 	VaultMasterKey string
 
+	// Request limits
+	MaxBodySize int64 // Maximum request body size in bytes (0 = default 50MB)
+
 	// GitHub Repository Config
 	ConfigRepoURL       string
 	ConfigRepoBranch    string
@@ -90,6 +93,9 @@ func Load() *Config {
 		JWTSecret:      os.Getenv("RUNQY_JWT_SECRET"),
 		VaultMasterKey: os.Getenv("RUNQY_VAULT_MASTER_KEY"),
 
+		// Request limits
+		MaxBodySize: getEnvInt64("RUNQY_MAX_BODY_SIZE", 50*1024*1024), // default 50MB
+
 		// GitHub Repository Config
 		ConfigRepoURL:       os.Getenv("CONFIG_REPO_URL"),
 		ConfigRepoBranch:    getEnv("CONFIG_REPO_BRANCH", "main"),
@@ -110,6 +116,15 @@ func getEnv(key, defaultVal string) string {
 func getEnvInt(key string, defaultVal int) int {
 	if val := os.Getenv(key); val != "" {
 		if i, err := strconv.Atoi(val); err == nil {
+			return i
+		}
+	}
+	return defaultVal
+}
+
+func getEnvInt64(key string, defaultVal int64) int64 {
+	if val := os.Getenv(key); val != "" {
+		if i, err := strconv.ParseInt(val, 10, 64); err == nil {
 			return i
 		}
 	}
