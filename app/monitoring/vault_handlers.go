@@ -31,13 +31,13 @@ type SetEntryRequest struct {
 func newListVaultsHandlerFunc(store *vaults.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !store.IsEnabled() {
-			http.Error(w, `{"error":"vaults not configured: RUNQY_VAULT_MASTER_KEY not set"}`, http.StatusServiceUnavailable)
+			writeJSONError(w, "vaults not configured: RUNQY_VAULT_MASTER_KEY not set", http.StatusServiceUnavailable)
 			return
 		}
 
 		summaries, err := store.ListVaults(r.Context())
 		if err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -54,35 +54,35 @@ func newListVaultsHandlerFunc(store *vaults.Store) http.HandlerFunc {
 func newCreateVaultHandlerFunc(store *vaults.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !store.IsEnabled() {
-			http.Error(w, `{"error":"vaults not configured: RUNQY_VAULT_MASTER_KEY not set"}`, http.StatusServiceUnavailable)
+			writeJSONError(w, "vaults not configured: RUNQY_VAULT_MASTER_KEY not set", http.StatusServiceUnavailable)
 			return
 		}
 
 		var req CreateVaultRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+			writeJSONError(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
 
 		if req.Name == "" {
-			http.Error(w, `{"error":"name is required"}`, http.StatusBadRequest)
+			writeJSONError(w, "name is required", http.StatusBadRequest)
 			return
 		}
 
 		// Check if vault already exists
 		exists, err := store.VaultExists(r.Context(), req.Name)
 		if err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if exists {
-			http.Error(w, `{"error":"vault already exists"}`, http.StatusConflict)
+			writeJSONError(w, "vault already exists", http.StatusConflict)
 			return
 		}
 
 		vault, err := store.CreateVault(r.Context(), req.Name, req.Description)
 		if err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -103,7 +103,7 @@ func newCreateVaultHandlerFunc(store *vaults.Store) http.HandlerFunc {
 func newGetVaultHandlerFunc(store *vaults.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !store.IsEnabled() {
-			http.Error(w, `{"error":"vaults not configured: RUNQY_VAULT_MASTER_KEY not set"}`, http.StatusServiceUnavailable)
+			writeJSONError(w, "vaults not configured: RUNQY_VAULT_MASTER_KEY not set", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -112,11 +112,11 @@ func newGetVaultHandlerFunc(store *vaults.Store) http.HandlerFunc {
 
 		detail, err := store.GetVaultDetail(r.Context(), name)
 		if err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if detail == nil {
-			http.Error(w, `{"error":"vault not found"}`, http.StatusNotFound)
+			writeJSONError(w, "vault not found", http.StatusNotFound)
 			return
 		}
 
@@ -128,7 +128,7 @@ func newGetVaultHandlerFunc(store *vaults.Store) http.HandlerFunc {
 func newDeleteVaultHandlerFunc(store *vaults.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !store.IsEnabled() {
-			http.Error(w, `{"error":"vaults not configured: RUNQY_VAULT_MASTER_KEY not set"}`, http.StatusServiceUnavailable)
+			writeJSONError(w, "vaults not configured: RUNQY_VAULT_MASTER_KEY not set", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -138,16 +138,16 @@ func newDeleteVaultHandlerFunc(store *vaults.Store) http.HandlerFunc {
 		// Check if vault exists
 		exists, err := store.VaultExists(r.Context(), name)
 		if err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if !exists {
-			http.Error(w, `{"error":"vault not found"}`, http.StatusNotFound)
+			writeJSONError(w, "vault not found", http.StatusNotFound)
 			return
 		}
 
 		if err := store.DeleteVault(r.Context(), name); err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -161,7 +161,7 @@ func newDeleteVaultHandlerFunc(store *vaults.Store) http.HandlerFunc {
 func newSetEntryHandlerFunc(store *vaults.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !store.IsEnabled() {
-			http.Error(w, `{"error":"vaults not configured: RUNQY_VAULT_MASTER_KEY not set"}`, http.StatusServiceUnavailable)
+			writeJSONError(w, "vaults not configured: RUNQY_VAULT_MASTER_KEY not set", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -170,16 +170,16 @@ func newSetEntryHandlerFunc(store *vaults.Store) http.HandlerFunc {
 
 		var req SetEntryRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+			writeJSONError(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
 
 		if req.Key == "" {
-			http.Error(w, `{"error":"key is required"}`, http.StatusBadRequest)
+			writeJSONError(w, "key is required", http.StatusBadRequest)
 			return
 		}
 		if req.Value == "" {
-			http.Error(w, `{"error":"value is required"}`, http.StatusBadRequest)
+			writeJSONError(w, "value is required", http.StatusBadRequest)
 			return
 		}
 
@@ -191,10 +191,10 @@ func newSetEntryHandlerFunc(store *vaults.Store) http.HandlerFunc {
 
 		if err := store.SetEntry(r.Context(), vaultName, req.Key, req.Value, isSecret); err != nil {
 			if err.Error() == "vault '"+vaultName+"' not found" {
-				http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusNotFound)
+				writeJSONError(w, err.Error(), http.StatusNotFound)
 				return
 			}
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -208,7 +208,7 @@ func newSetEntryHandlerFunc(store *vaults.Store) http.HandlerFunc {
 func newListEntriesHandlerFunc(store *vaults.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !store.IsEnabled() {
-			http.Error(w, `{"error":"vaults not configured: RUNQY_VAULT_MASTER_KEY not set"}`, http.StatusServiceUnavailable)
+			writeJSONError(w, "vaults not configured: RUNQY_VAULT_MASTER_KEY not set", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -218,10 +218,10 @@ func newListEntriesHandlerFunc(store *vaults.Store) http.HandlerFunc {
 		entries, err := store.ListEntries(r.Context(), vaultName)
 		if err != nil {
 			if err.Error() == "vault '"+vaultName+"' not found" {
-				http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusNotFound)
+				writeJSONError(w, err.Error(), http.StatusNotFound)
 				return
 			}
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -236,7 +236,7 @@ func newListEntriesHandlerFunc(store *vaults.Store) http.HandlerFunc {
 func newDeleteEntryHandlerFunc(store *vaults.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !store.IsEnabled() {
-			http.Error(w, `{"error":"vaults not configured: RUNQY_VAULT_MASTER_KEY not set"}`, http.StatusServiceUnavailable)
+			writeJSONError(w, "vaults not configured: RUNQY_VAULT_MASTER_KEY not set", http.StatusServiceUnavailable)
 			return
 		}
 
@@ -248,10 +248,10 @@ func newDeleteEntryHandlerFunc(store *vaults.Store) http.HandlerFunc {
 			errMsg := err.Error()
 			if errMsg == "vault '"+vaultName+"' not found" ||
 				errMsg == "key '"+key+"' not found in vault '"+vaultName+"'" {
-				http.Error(w, `{"error":"`+errMsg+`"}`, http.StatusNotFound)
+				writeJSONError(w, errMsg, http.StatusNotFound)
 				return
 			}
-			http.Error(w, `{"error":"`+errMsg+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, errMsg, http.StatusInternalServerError)
 			return
 		}
 

@@ -40,7 +40,7 @@ func newListQueueConfigsHandlerFunc(store *queueworker.Store) http.HandlerFunc {
 		// Get all enabled parent queues (independent of sub-queue state)
 		parentQueues, err := store.ListParentQueues(ctx)
 		if err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -95,11 +95,11 @@ func newGetQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc {
 
 		cfg, err := store.Get(r.Context(), name)
 		if err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if cfg == nil {
-			http.Error(w, `{"error":"queue config not found"}`, http.StatusNotFound)
+			writeJSONError(w, "queue config not found", http.StatusNotFound)
 			return
 		}
 
@@ -121,29 +121,29 @@ func newCreateQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 		var req CreateQueueConfigRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Printf("[QUEUE-CONFIG] Error decoding request: %v", err)
-			http.Error(w, `{"error":"invalid request body: `+err.Error()+`"}`, http.StatusBadRequest)
+			writeJSONError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		log.Printf("[QUEUE-CONFIG] Create request: name=%s, priority=%d, hasDeployment=%v", req.Name, req.Priority, req.Deployment != nil)
 
 		if req.Name == "" {
-			http.Error(w, `{"error":"name is required"}`, http.StatusBadRequest)
+			writeJSONError(w, "name is required", http.StatusBadRequest)
 			return
 		}
 		if req.Priority < 1 {
-			http.Error(w, `{"error":"priority must be at least 1"}`, http.StatusBadRequest)
+			writeJSONError(w, "priority must be at least 1", http.StatusBadRequest)
 			return
 		}
 
 		// Validate deployment if provided
 		if req.Deployment != nil {
 			if req.Deployment.GitURL == "" {
-				http.Error(w, `{"error":"git_url is required for deployment"}`, http.StatusBadRequest)
+				writeJSONError(w, "git_url is required for deployment", http.StatusBadRequest)
 				return
 			}
 			if req.Deployment.StartupCmd == "" {
-				http.Error(w, `{"error":"startup_cmd is required for deployment"}`, http.StatusBadRequest)
+				writeJSONError(w, "startup_cmd is required for deployment", http.StatusBadRequest)
 				return
 			}
 		}
@@ -157,12 +157,12 @@ func newCreateQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 		exists, err := store.Exists(ctx, req.Name)
 		if err != nil {
 			log.Printf("[QUEUE-CONFIG] Error checking existence for %s: %v", req.Name, err)
-			http.Error(w, `{"error":"failed to check queue existence: `+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, "failed to check queue existence: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		if exists && !force {
-			http.Error(w, `{"error":"queue '`+req.Name+`' already exists. Use force=true to update"}`, http.StatusConflict)
+			writeJSONError(w, "queue '"+req.Name+"' already exists. Use force=true to update", http.StatusConflict)
 			return
 		}
 
@@ -178,7 +178,7 @@ func newCreateQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 		log.Printf("[QUEUE-CONFIG] Saving config: %+v", cfg)
 		if err := store.Save(ctx, cfg); err != nil {
 			log.Printf("[QUEUE-CONFIG] Error saving %s: %v", req.Name, err)
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -210,7 +210,7 @@ func newUpdateQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 
 		var req CreateQueueConfigRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+			writeJSONError(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
 
@@ -219,22 +219,22 @@ func newUpdateQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 		// Check if queue exists
 		existing, err := store.Get(ctx, name)
 		if err != nil {
-			http.Error(w, `{"error":"failed to get queue: `+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, "failed to get queue: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if existing == nil {
-			http.Error(w, `{"error":"queue not found"}`, http.StatusNotFound)
+			writeJSONError(w, "queue not found", http.StatusNotFound)
 			return
 		}
 
 		// Validate deployment if provided
 		if req.Deployment != nil {
 			if req.Deployment.GitURL == "" {
-				http.Error(w, `{"error":"git_url is required for deployment"}`, http.StatusBadRequest)
+				writeJSONError(w, "git_url is required for deployment", http.StatusBadRequest)
 				return
 			}
 			if req.Deployment.StartupCmd == "" {
-				http.Error(w, `{"error":"startup_cmd is required for deployment"}`, http.StatusBadRequest)
+				writeJSONError(w, "startup_cmd is required for deployment", http.StatusBadRequest)
 				return
 			}
 		}
@@ -253,7 +253,7 @@ func newUpdateQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 		}
 
 		if err := store.Save(ctx, cfg); err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -277,17 +277,17 @@ func newDeleteQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc 
 		// Check if queue exists
 		exists, err := store.Exists(ctx, name)
 		if err != nil {
-			http.Error(w, `{"error":"failed to check queue existence: `+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, "failed to check queue existence: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if !exists {
-			http.Error(w, `{"error":"queue '`+name+`' not found"}`, http.StatusNotFound)
+			writeJSONError(w, "queue '"+name+"' not found", http.StatusNotFound)
 			return
 		}
 
 		// Delete the queue (soft-delete)
 		if err := store.Delete(ctx, name); err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -318,7 +318,7 @@ func newRestoreQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc
 		if hasSubQueue {
 			// Restore a specific sub-queue
 			if err := store.RestoreSubQueue(ctx, name); err != nil {
-				http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+				writeJSONError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			// Re-register in asynq
@@ -328,7 +328,7 @@ func newRestoreQueueConfigHandlerFunc(store *queueworker.Store) http.HandlerFunc
 		} else {
 			// Restore the entire parent queue
 			if err := store.EnableQueue(ctx, parent); err != nil {
-				http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+				writeJSONError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			// Re-register all sub-queues in asynq

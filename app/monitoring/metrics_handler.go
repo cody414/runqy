@@ -63,7 +63,7 @@ func newGetMetricsHandlerFunc(client *http.Client, prometheusAddr string) http.H
 	return func(w http.ResponseWriter, r *http.Request) {
 		opts, err := extractMetricsFetchOptions(r)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("invalid query parameter: %v", err), http.StatusBadRequest)
+			writeJSONError(w, fmt.Sprintf("invalid query parameter: %v", err), http.StatusBadRequest)
 			return
 		}
 		// List of queries (i.e. promQL) to send to prometheus server.
@@ -92,7 +92,7 @@ func newGetMetricsHandlerFunc(client *http.Client, prometheusAddr string) http.H
 		for r := range ch {
 			n--
 			if r.err != nil {
-				http.Error(w, fmt.Sprintf("failed to fetch %q: %v", r.query, r.err), http.StatusInternalServerError)
+				writeJSONError(w, fmt.Sprintf("failed to fetch %q: %v", r.query, r.err), http.StatusInternalServerError)
 				return
 			}
 			switch r.query {
@@ -121,11 +121,11 @@ func newGetMetricsHandlerFunc(client *http.Client, prometheusAddr string) http.H
 		}
 		bytes, err := json.Marshal(resp)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to marshal response into JSON: %v", err), http.StatusInternalServerError)
+			writeJSONError(w, fmt.Sprintf("failed to marshal response into JSON: %v", err), http.StatusInternalServerError)
 			return
 		}
 		if _, err := w.Write(bytes); err != nil {
-			http.Error(w, fmt.Sprintf("failed to write to response: %v", err), http.StatusInternalServerError)
+			writeJSONError(w, fmt.Sprintf("failed to write to response: %v", err), http.StatusInternalServerError)
 			return
 		}
 	}

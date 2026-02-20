@@ -71,7 +71,7 @@ func newListWorkersHandlerFunc(rc redis.UniversalClient) http.HandlerFunc {
 			}
 		}
 		if err := iter.Err(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -125,7 +125,7 @@ func newListWorkersHandlerFunc(rc redis.UniversalClient) http.HandlerFunc {
 		resp := listWorkersResponse{Workers: workers}
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -137,7 +137,7 @@ func newGetWorkerLogsHandlerFunc(rc redis.UniversalClient) http.HandlerFunc {
 		vars := mux.Vars(r)
 		workerID := vars["workerId"]
 		if workerID == "" {
-			http.Error(w, "workerId is required", http.StatusBadRequest)
+			writeJSONError(w, "workerId is required", http.StatusBadRequest)
 			return
 		}
 
@@ -154,7 +154,7 @@ func newGetWorkerLogsHandlerFunc(rc redis.UniversalClient) http.HandlerFunc {
 
 		lines, err := rc.LRange(ctx, logKey, -n, -1).Result()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -172,13 +172,13 @@ func newWorkerLogStreamHandlerFunc(rc redis.UniversalClient) http.HandlerFunc {
 		vars := mux.Vars(r)
 		workerID := vars["workerId"]
 		if workerID == "" {
-			http.Error(w, "workerId is required", http.StatusBadRequest)
+			writeJSONError(w, "workerId is required", http.StatusBadRequest)
 			return
 		}
 
 		flusher, ok := w.(http.Flusher)
 		if !ok {
-			http.Error(w, "streaming not supported", http.StatusInternalServerError)
+			writeJSONError(w, "streaming not supported", http.StatusInternalServerError)
 			return
 		}
 
