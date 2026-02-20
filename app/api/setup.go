@@ -29,10 +29,10 @@ func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg
 	// Setup CLI API endpoints (queue/task management)
 	inspector := asynq.NewInspector(redisOpt)
 	SetupCLIAPI(r, inspector, qwStore, apiKey)
-	// Queue API - all routes require API key
+	// Queue API - task status is public (UUID acts as capability token)
 	router_predict := r.Group("queue")
-	router_predict.Use(Authorize(apiKey))
 	router_predict.GET("/:uuid", GetTaskStatus)
+	router_predict.Use(Authorize(apiKey))
 	router_predict.POST("/add", AddTask(qwConfigDir, qwStore))
 	router_predict.POST("/add-batch", AddTaskBatch(qwConfigDir, qwStore))
 
