@@ -13,7 +13,9 @@ type Config struct {
 	HTTPPort string
 
 	// API Authentication
-	APIKey string
+	APIKey       string // RUNQY_API_KEY — admin key (full access, backward compatible)
+	WorkerAPIKey string // RUNQY_WORKER_API_KEY — worker role (register, dequeue, heartbeat)
+	ClientAPIKey string // RUNQY_CLIENT_API_KEY — client role (enqueue, task status)
 
 	// Redis (existing env vars, centralized here)
 	RedisHost     string
@@ -63,7 +65,9 @@ func Load() *Config {
 		HTTPPort: getEnv("PORT", "3000"),
 
 		// API Authentication
-		APIKey: os.Getenv("RUNQY_API_KEY"),
+		APIKey:       os.Getenv("RUNQY_API_KEY"),
+		WorkerAPIKey: os.Getenv("RUNQY_WORKER_API_KEY"),
+		ClientAPIKey: os.Getenv("RUNQY_CLIENT_API_KEY"),
 
 		// Redis
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),
