@@ -24,26 +24,33 @@ func GetVaultStore() *vaults.Store {
 }
 
 func SetupAPI(r *gin.Engine, qwStore *queueworker.Store, qwConfigDir string, cfg *config.Config, redisOpt asynq.RedisClientOpt) {
-	apiKey := cfg.APIKey
+	adminKey  := cfg.APIKey
+	workerKey := cfg.WorkerAPIKey
+	clientKey := cfg.ClientAPIKey
 
-	// Setup CLI API endpoints (queue/task management)
+	// CLI API endpoints remain admin-only
 	inspector := asynq.NewInspector(redisOpt)
-	SetupCLIAPI(r, inspector, qwStore, apiKey)
-	// Queue API - task status is public (UUID acts as capability token)
+	SetupCLIAPI(r, inspector, qwStore, adminKey)
+
+	// ── Client routes ──────────────────────────────────────────────────────
+	// GET /:uuid is public (UUID acts as a capability token)
+	// POST /add and /add-batch require client (or admin) key
 	router_predict := r.Group("queue")
 	router_predict.GET("/:uuid", GetTaskStatus)
-	router_predict.Use(Authorize(apiKey))
+	router_predict.Use(AuthorizeRoles(adminKey, workerKey, clientKey, RoleClient))
 	router_predict.POST("/add", AddTask(qwConfigDir, qwStore))
 	router_predict.POST("/add-batch", AddTaskBatch(qwConfigDir, qwStore))
 
-	// Worker registration endpoint
+	// ── Worker routes ──────────────────────────────────────────────────────
+	// Worker registration requires worker (or admin) key
 	router_worker := r.Group("worker")
-	router_worker.Use(Authorize(apiKey))
+	router_worker.Use(AuthorizeRoles(adminKey, workerKey, clientKey, RoleWorker))
 	router_worker.POST("/register", WorkerHandshake(qwStore, cfg))
 
-	// Workers API - all routes require API key
+	// ── Admin routes ───────────────────────────────────────────────────────
+	// Queue config and worker management — admin only
 	router_workers := r.Group("workers")
-	router_workers.Use(Authorize(apiKey))
+	router_workers.Use(AuthorizeRoles(adminKey, workerKey, clientKey, RoleAdmin))
 	router_workers.GET("/config/:queue_name", GetQueueConfig(qwStore))
 	router_workers.GET("", ListWorkers)
 	router_workers.GET("/:worker_id", GetWorker)
