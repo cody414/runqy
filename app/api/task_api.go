@@ -71,7 +71,6 @@ func GetTaskStatus(c *gin.Context) {
 	defer inspector.Close()
 
 	var resp *asynq.TaskInfo
-	var err error
 
 	if c.Query("wait") == "true" {
 		// Long poll: wait up to 30s for completed/archived
