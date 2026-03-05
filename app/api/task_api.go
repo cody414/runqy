@@ -21,11 +21,12 @@ import (
 // GetTaskStatus godoc
 //
 //	@Summary		Get the information about the task in the queue and it's response if any.
-//	@Description	Retrieve the body of the response or the status of the request if has not been processed already.
+//	@Description	Retrieve task status instantly, or long-poll with ?wait=true until completed/archived (30s timeout).
 //	@Tags			queue
 //	@Accept			json
 //	@Produce		json
 //	@Param			uuid	path		string	true	"The uuid of the task returned from the POST query"
+//	@Param			wait	query		string	false	"Set to 'true' to long-poll until completed/archived (default: instant)"
 //	@Success		200		{object}	models.ResponseGet
 //	@Failure		400		{object}	models.APIErrorResponse
 //	@Failure		404		{object}	models.APIErrorResponse
@@ -69,10 +70,23 @@ func GetTaskStatus(c *gin.Context) {
 	inspector := asynq.NewInspector(redisOpt)
 	defer inspector.Close()
 
-	resp, err := waitForResult(c.Request.Context(), inspector, queue, uuid)
-	if err != nil {
-		c.JSON(http.StatusRequestTimeout, models.APIErrorResponse{Errors: []string{err.Error()}})
-		return
+	var resp *asynq.TaskInfo
+	var err error
+
+	if c.Query("wait") == "true" {
+		// Long poll: wait up to 30s for completed/archived
+		resp, err = waitForResult(c.Request.Context(), inspector, queue, uuid)
+		if err != nil {
+			c.JSON(http.StatusRequestTimeout, models.APIErrorResponse{Errors: []string{err.Error()}})
+			return
+		}
+	} else {
+		// Instant: return current state immediately
+		resp, err = inspector.GetTaskInfo(queue, uuid)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.APIErrorResponse{Errors: []string{err.Error()}})
+			return
+		}
 	}
 
 	taskDoc := models.GetTaskInfoDoc{
