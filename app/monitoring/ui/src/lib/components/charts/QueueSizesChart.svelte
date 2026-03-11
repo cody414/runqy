@@ -16,15 +16,13 @@
 	const stateColors = {
 		pending: 'rgb(234, 179, 8)',   // yellow-500
 		active: 'rgb(59, 130, 246)',   // blue-500
-		retry: 'rgb(249, 115, 22)',    // orange-500
-		archived: 'rgb(107, 114, 128)' // gray-500
+		retry: 'rgb(249, 115, 22)'    // orange-500
 	};
 
 	const stateLabels = {
 		pending: 'Pending',
 		active: 'Active',
-		retry: 'Retry',
-		archived: 'Archived'
+		retry: 'Retry'
 	};
 
 	interface ChartDataPoint {
@@ -50,8 +48,7 @@
 				pending: q.pending || 0,
 				active: q.active || 0,
 				retry: q.retry || 0,
-				archived: q.archived || 0,
-				total: (q.pending || 0) + (q.active || 0) + (q.retry || 0) + (q.archived || 0)
+				total: (q.pending || 0) + (q.active || 0) + (q.retry || 0)
 			}))
 			.sort((a, b) => b.total - a.total)
 			.slice(0, maxQueues);
@@ -62,7 +59,6 @@
 			flattened.push({ queue: q.queue, state: 'pending', value: q.pending });
 			flattened.push({ queue: q.queue, state: 'active', value: q.active });
 			flattened.push({ queue: q.queue, state: 'retry', value: q.retry });
-			flattened.push({ queue: q.queue, state: 'archived', value: q.archived });
 		}
 
 		return { flattened, queues: sorted.map(q => q.queue) };
@@ -79,12 +75,19 @@
 		return val.toString();
 	}
 
-	function truncateQueueName(name: string): string {
-		const parts = name.split('-');
-		if (parts.length >= 2) {
-			return parts.map(p => p.slice(0, 2)).join('-');
-		}
-		return name.slice(0, 2);
+	function truncateQueueName(name: string): { line1: string; line2: string } {
+		const dotIndex = name.indexOf('.');
+		const parent = dotIndex >= 0 ? name.slice(0, dotIndex) : name;
+		const sub = dotIndex >= 0 ? name.slice(dotIndex) : '';
+
+		const parts = parent.split('-');
+		const shortParent = parts.length >= 2
+			? parts.map(p => p.slice(0, 2)).join('-')
+			: parent.slice(0, 4);
+
+		const shortSub = sub ? '.' + sub.slice(1, 5) : '';
+
+		return { line1: shortParent, line2: shortSub };
 	}
 
 	function handleQueueClick(qname: string) {
@@ -121,7 +124,7 @@
 				yScale={scaleLinear()}
 				yDomain={[0, maxValue]}
 				yNice
-				padding={{ top: 20, right: 20, bottom: 50, left: 50 }}
+				padding={{ top: 20, right: 20, bottom: 54, left: 50 }}
 			>
 				<Svg>
 					<!-- Grid lines -->
@@ -141,7 +144,7 @@
 					<!-- Grouped bars for each queue -->
 					{#each chartData.queues as queue}
 						{@const queueData = chartData.flattened.filter(d => d.queue === queue)}
-						{@const states = ['pending', 'active', 'retry', 'archived']}
+						{@const states = ['pending', 'active', 'retry']}
 						{#each states as state, i}
 							{@const d = queueData.find(x => x.state === state)}
 							{#if d && d.value > 0}
@@ -159,12 +162,23 @@
 					{/each}
 
 					<!-- Axes -->
-					<Axis
-						placement="bottom"
-						format={(d) => truncateQueueName(d)}
-						tickLabelProps={{ class: 'text-xs' }}
-						classes={{ tickLabel: '!fill-[#9ca3af] !stroke-[#111118]' }}
-					/>
+					<Axis placement="bottom" classes={{ tickLabel: '!fill-[#9ca3af] !stroke-[#111118]' }}>
+						<svelte:fragment slot="tickLabel" let:labelProps>
+							{@const label = truncateQueueName(labelProps.value)}
+							<text
+								x={labelProps.x}
+								y={labelProps.y}
+								dy={4}
+								text-anchor="middle"
+								dominant-baseline="hanging"
+							>
+								<tspan x={labelProps.x} fill="#9ca3af" stroke="#111118" stroke-width="0.3" font-size="0.75rem">{label.line1}</tspan>
+								{#if label.line2}
+									<tspan x={labelProps.x} dy="1.1em" fill="#9ca3af" stroke="#111118" stroke-width="0.3" font-size="0.7rem">{label.line2}</tspan>
+								{/if}
+							</text>
+						</svelte:fragment>
+					</Axis>
 					<Axis placement="left" format={formatNumber} ticks={5} classes={{ tickLabel: '!fill-[#9ca3af] !stroke-[#111118]' }} />
 				</Svg>
 
