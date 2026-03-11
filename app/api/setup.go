@@ -7,7 +7,7 @@ import (
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/Publikey/runqy/vaults"
 	"github.com/gin-gonic/gin"
-	"github.com/hibiken/asynq"
+	"github.com/Publikey/runqy/third_party/asynq"
 )
 
 // Global vault store for use by worker handshake (protected by mutex)

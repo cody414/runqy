@@ -9,7 +9,7 @@ import (
 
 	"github.com/Publikey/runqy/client"
 	"github.com/Publikey/runqy/models"
-	"github.com/hibiken/asynq"
+	"github.com/Publikey/runqy/third_party/asynq"
 	"github.com/spf13/cobra"
 )
 

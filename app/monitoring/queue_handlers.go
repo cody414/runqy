@@ -8,7 +8,7 @@ import (
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/gorilla/mux"
 
-	"github.com/hibiken/asynq"
+	"github.com/Publikey/runqy/third_party/asynq"
 )
 
 // ****************************************************************************

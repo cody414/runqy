@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/hibiken/asynq"
+	"github.com/Publikey/runqy/third_party/asynq"
 )
 
 // NewGenericTask creates a new task with a raw JSON payload
