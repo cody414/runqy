@@ -21,8 +21,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/hibiken/asynq"
-	"github.com/hibiken/asynq/x/metrics"
+	"github.com/Publikey/runqy/third_party/asynq"
+	"github.com/Publikey/runqy/third_party/asynq/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"

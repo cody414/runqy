@@ -11,7 +11,7 @@ import (
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/Publikey/runqy/vaults"
 	"github.com/gorilla/mux"
-	"github.com/hibiken/asynq"
+	"github.com/Publikey/runqy/third_party/asynq"
 	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
 )

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Publikey/runqy/config"
-	"github.com/hibiken/asynq"
+	"github.com/Publikey/runqy/third_party/asynq"
 	"github.com/redis/go-redis/v9"
 )
 

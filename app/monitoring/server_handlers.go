@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/hibiken/asynq"
+	"github.com/Publikey/runqy/third_party/asynq"
 )
 
 // ****************************************************************************

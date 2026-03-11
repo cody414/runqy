@@ -9,7 +9,7 @@ import (
 	"github.com/Publikey/runqy/models"
 	queueworker "github.com/Publikey/runqy/queues"
 	"github.com/gin-gonic/gin"
-	"github.com/hibiken/asynq"
+	"github.com/Publikey/runqy/third_party/asynq"
 )
 
 // QueueInfoResponse represents queue information for CLI

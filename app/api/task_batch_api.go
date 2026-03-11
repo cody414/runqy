@@ -10,7 +10,7 @@ import (
 	queueworker "github.com/Publikey/runqy/queues"
 	t "github.com/Publikey/runqy/tasks"
 	"github.com/gin-gonic/gin"
-	"github.com/hibiken/asynq"
+	"github.com/Publikey/runqy/third_party/asynq"
 	"github.com/redis/go-redis/v9"
 )
 
